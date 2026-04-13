@@ -41,6 +41,7 @@
 #include "mozilla/dom/NodeInfo.h"
 #include "mozilla/dom/RustTypes.h"
 #include "mozilla/dom/ShadowRootBindingFwd.h"
+#include "mozilla/dom/nsAStringOrJSString.h"
 #include "nsAtom.h"
 #include "nsAttrValue.h"
 #include "nsAttrValueInlines.h"
@@ -1855,6 +1856,14 @@ class Element : public FragmentOrElement {
 
   void CloneAnimationsFrom(const Element& aOther);
 
+  virtual void GetInnerHTML(JSContext* aCx, JS::Rooted<JSString*>* aInnerHTML,
+                            OOMReporter& aError);
+
+  MOZ_CAN_RUN_SCRIPT void SetInnerHTML(JSContext* aCx,
+                                       JS::Handle<JSString*> aInnerHTML,
+                                       nsIPrincipal* aSubjectPrincipal,
+                                       ErrorResult& aError);
+
   virtual void GetInnerHTML(nsAString& aInnerHTML, OOMReporter& aError);
 
   // https://html.spec.whatwg.org/#dom-parsing-and-serialization:dom-element-innerhtml
@@ -1871,7 +1880,7 @@ class Element : public FragmentOrElement {
       nsIPrincipal* aSubjectPrincipal, ErrorResult& aError);
 
   // Call this method only with trusted, i.e. non-attacker-controlled, strings.
-  virtual void SetInnerHTMLTrusted(const nsAString& aInnerHTML,
+  virtual void SetInnerHTMLTrusted(const nsAStringOrJSString aInnerHTML,
                                    nsIPrincipal* aSubjectPrincipal,
                                    ErrorResult& aError);
 

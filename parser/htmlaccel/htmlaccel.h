@@ -338,7 +338,7 @@ StrideToMask(const char16_t* aArr /* len = 16 */, uint8x16_t aTable,
 /// The boolean arguments exist for signature compatibility with the UTF-16
 /// case and are unused in the Latin1 case.
 MOZ_ALWAYS_INLINE_EVEN_DEBUG uint8x16_t
-StrideToMask(const char* aArr /* len = 16 */, uint8x16_t aTable,
+StrideToMask(const unsigned char* aArr /* len = 16 */, uint8x16_t aTable,
              bool aAllowSurrogates = true, bool aAllowHyphen = true,
              bool aAllowRightSquareBracket = true) {
   uint8x16_t stride;
@@ -406,9 +406,10 @@ MOZ_ALWAYS_INLINE_EVEN_DEBUG uint32_t CountEscaped(const CharT* aInput,
   return numEncodedChars;
 }
 
-MOZ_ALWAYS_INLINE_EVEN_DEBUG bool ContainsMarkup(const char16_t* aInput,
-                                                 const char16_t* aEnd) {
-  const char16_t* current = aInput;
+template <typename CharT>
+MOZ_ALWAYS_INLINE_EVEN_DEBUG bool ContainsMarkup(const CharT* aInput,
+                                                 const CharT* aEnd) {
+  const CharT* current = aInput;
   while (aEnd - current >= 16) {
     uint8x16_t mask = StrideToMask(current, ZERO_LT_AMP_CR);
 #if defined(__aarch64__)
@@ -425,9 +426,9 @@ MOZ_ALWAYS_INLINE_EVEN_DEBUG bool ContainsMarkup(const char16_t* aInput,
     current += 16;
   }
   while (current != aEnd) {
-    char16_t c = *current;
-    if (c == char16_t('<') || c == char16_t('&') || c == char16_t('\r') ||
-        c == char16_t('\0')) {
+    CharT c = *current;
+    if (c == CharT('<') || c == CharT('&') || c == CharT('\r') ||
+        c == CharT('\0')) {
       return true;
     }
     ++current;

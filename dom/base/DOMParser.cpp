@@ -54,7 +54,8 @@ NS_IMPL_CYCLE_COLLECTING_ADDREF(DOMParser)
 NS_IMPL_CYCLE_COLLECTING_RELEASE(DOMParser)
 
 already_AddRefed<Document> DOMParser::ParseFromStringInternal(
-    const nsAString& aStr, SupportedType aType, ErrorResult& aRv) {
+    JSContext* aCx, JS::Handle<JSString*> aStr, SupportedType aType,
+    ErrorResult& aRv) {
   if (aType == SupportedType::Text_html) {
     nsCOMPtr<Document> document = SetUpDocument(DocumentFlavor::HTML, aRv);
     if (NS_WARN_IF(aRv.Failed())) {
@@ -70,7 +71,8 @@ already_AddRefed<Document> DOMParser::ParseFromStringInternal(
       document->ForceSkipDTDSecurityChecks();
     }
 
-    nsresult rv = nsContentUtils::ParseDocumentHTML(aStr, document, false);
+    nsAStringOrJSString wrap(aCx, aStr);
+    nsresult rv = nsContentUtils::ParseDocumentHTML(wrap, document, false);
     if (NS_WARN_IF(NS_FAILED(rv))) {
       aRv.Throw(rv);
       return nullptr;
@@ -79,12 +81,18 @@ already_AddRefed<Document> DOMParser::ParseFromStringInternal(
     return document.forget();
   }
 
-  nsAutoCString utf8str;
+  nsAutoJSCString utf8str;
+  if (!utf8str.init(aCx, aStr)) {
+    aRv.Throw(NS_ERROR_OUT_OF_MEMORY);
+    return nullptr;
+  }
+#if 0
   // Convert from UTF16 to UTF8 using fallible allocations
   if (!AppendUTF16toUTF8(aStr, utf8str, mozilla::fallible)) {
     aRv.Throw(NS_ERROR_OUT_OF_MEMORY);
     return nullptr;
   }
+#endif
 
   // The new stream holds a reference to the buffer
   nsCOMPtr<nsIInputStream> stream;
@@ -99,9 +107,10 @@ already_AddRefed<Document> DOMParser::ParseFromStringInternal(
 }
 
 already_AddRefed<Document> DOMParser::ParseFromString(
-    const TrustedHTMLOrString& aStr, SupportedType aType,
+    JSContext* aCx, JS::Handle<JSString*> aStr, SupportedType aType,
     nsIPrincipal* aSubjectPrincipal, ErrorResult& aRv) {
-  constexpr nsLiteralString sink = u"DOMParser parseFromString"_ns;
+#if 0
+      constexpr nsLiteralString sink = u"DOMParser parseFromString"_ns;
 
   MOZ_ASSERT(mOwner);
   nsCOMPtr<nsIGlobalObject> pinnedOwner = mOwner;
@@ -113,13 +122,13 @@ already_AddRefed<Document> DOMParser::ParseFromString(
   if (aRv.Failed()) {
     return nullptr;
   }
-
-  return ParseFromStringInternal(*compliantString, aType, aRv);
+#endif
+  return ParseFromStringInternal(aCx, aStr, aType, aRv);
 }
 
-already_AddRefed<Document> DOMParser::ParseFromSafeString(const nsAString& aStr,
-                                                          SupportedType aType,
-                                                          ErrorResult& aRv) {
+already_AddRefed<Document> DOMParser::ParseFromSafeString(
+    JSContext* aCx, JS::Handle<JSString*> aStr, SupportedType aType,
+    ErrorResult& aRv) {
   // Create the new document with the same principal as `mOwner`, even if it is
   // the system principal. This will ensure that nodes from the returned
   // document are in the same DocGroup as the owner global's document, allowing
@@ -129,7 +138,7 @@ already_AddRefed<Document> DOMParser::ParseFromSafeString(const nsAString& aStr,
     mPrincipal = mOwner->PrincipalOrNull();
   }
 
-  RefPtr<Document> ret = ParseFromStringInternal(aStr, aType, aRv);
+  RefPtr<Document> ret = ParseFromStringInternal(aCx, aStr, aType, aRv);
   mPrincipal = std::move(docPrincipal);
   return ret.forget();
 }

@@ -97,6 +97,7 @@ class autoJArray {
       : arr(other.arr), length(other.length) {}
   ~autoJArray() { delete[] arr; }
   operator T*() { return arr; }
+  T* get() { return arr; }
   T& operator[](L const index) {
     MOZ_ASSERT(index >= 0, "Array access with negative index.");
     MOZ_ASSERT(index < length, "Array index out of bounds.");

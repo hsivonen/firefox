@@ -5123,6 +5123,34 @@ void Element::CloneAnimationsFrom(const Element& aOther) {
   }
 }
 
+void Element::GetInnerHTML(JSContext* aCx, JS::Rooted<JSString*>* aInnerHTML,
+                           OOMReporter& aError) {
+  nsString str;  // Deliberately not Auto to match bindings
+  GetInnerHTML(str, aError);
+  JSString* jsStr;
+  size_t len = str.Length();
+  if (!len) {
+    jsStr = JS_GetEmptyString(aCx);
+  } else {
+    mozilla::StringBuffer* buf = str.GetStringBuffer();
+    MOZ_RELEASE_ASSERT(buf);
+    jsStr = JS::NewStringFromKnownLiveTwoByteBuffer(aCx, buf, len);
+    if (!jsStr) {
+      aError.ReportOOM();
+      return;
+    }
+  }
+  aInnerHTML->set(jsStr);
+}
+
+void Element::SetInnerHTML(JSContext* aCx, JS::Handle<JSString*> aInnerHTML,
+                           nsIPrincipal* aSubjectPrincipal,
+                           ErrorResult& aError) {
+  // XXX Trusted Types
+  nsAStringOrJSString wrap(aCx, aInnerHTML);
+  SetInnerHTMLTrusted(wrap, aSubjectPrincipal, aError);
+}
+
 void Element::GetInnerHTML(nsAString& aInnerHTML, OOMReporter& aError) {
   GetMarkup(false, aInnerHTML);
 }
@@ -5150,7 +5178,7 @@ void Element::SetInnerHTML(const TrustedHTMLOrNullIsEmptyString& aInnerHTML,
   SetInnerHTMLTrusted(*compliantString, aSubjectPrincipal, aError);
 }
 
-void Element::SetInnerHTMLTrusted(const nsAString& aInnerHTML,
+void Element::SetInnerHTMLTrusted(const nsAStringOrJSString aInnerHTML,
                                   nsIPrincipal* aSubjectPrincipal,
                                   ErrorResult& aError) {
   SetInnerHTMLInternal(aInnerHTML, aError);

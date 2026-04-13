@@ -30,9 +30,10 @@ nsHtml5StringParser::~nsHtml5StringParser() { ClearCaches(); }
 
 /* https://html.spec.whatwg.org/#html-fragment-parsing-algorithm */
 nsresult nsHtml5StringParser::ParseFragment(
-    const nsAString& aSourceBuffer, nsIContent* aTargetNode,
-    nsAtom* aContextLocalName, int32_t aContextNamespace, bool aQuirks,
-    bool aPreventScriptExecution, bool aAllowDeclarativeShadowRoots) {
+    const mozilla::dom::nsAStringOrJSString aSourceBuffer,
+    nsIContent* aTargetNode, nsAtom* aContextLocalName,
+    int32_t aContextNamespace, bool aQuirks, bool aPreventScriptExecution,
+    bool aAllowDeclarativeShadowRoots) {
   NS_ENSURE_TRUE(aSourceBuffer.Length() <= INT32_MAX, NS_ERROR_OUT_OF_MEMORY);
 
   Document* doc = aTargetNode->OwnerDoc();
@@ -67,7 +68,7 @@ nsresult nsHtml5StringParser::ParseFragment(
 }
 
 nsresult nsHtml5StringParser::ParseDocument(
-    const nsAString& aSourceBuffer, Document* aTargetDoc,
+    const mozilla::dom::nsAStringOrJSString aSourceBuffer, Document* aTargetDoc,
     bool aScriptingEnabledForNoscriptParsing) {
   MOZ_ASSERT(!aTargetDoc->GetFirstChild());
 
@@ -107,10 +108,44 @@ void nsHtml5StringParser::TryCache() {
   }
 }
 
-nsresult nsHtml5StringParser::Tokenize(const nsAString& aSourceBuffer,
-                                       Document* aDocument,
-                                       bool aScriptingEnabledForNoscriptParsing,
-                                       bool aDeclarativeShadowRootsAllowed) {
+template <typename Char>
+bool nsHtml5StringParser::Tokenize(mozilla::Span<const Char> aBuffer) {
+  nsHtml5DependentBuffer<Char> buffer(aBuffer);
+  while (buffer.hasMore()) {
+    buffer.adjust(mLastWasCR);
+    mLastWasCR = false;
+    if (buffer.hasMore()) {
+      if (!mTokenizer->EnsureBufferSpace(buffer.getLength())) {
+        return false;
+      }
+      mLastWasCR = mTokenizer->tokenizeBuffer(&buffer);
+      if (NS_FAILED(mBuilder->IsBroken())) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+template bool nsHtml5StringParser::Tokenize<char16_t>(
+    mozilla::Span<const char16_t> aBuffer);
+template bool nsHtml5StringParser::Tokenize<unsigned char>(
+    mozilla::Span<const unsigned char> aBuffer);
+
+static bool UTF16Callback(void* aContext,
+                          mozilla::Span<const char16_t> aBuffer) {
+  return ((nsHtml5StringParser*)aContext)->Tokenize(aBuffer);
+}
+
+static bool Latin1Callback(void* aContext,
+                           mozilla::Span<const unsigned char> aBuffer) {
+  return ((nsHtml5StringParser*)aContext)->Tokenize(aBuffer);
+}
+
+nsresult nsHtml5StringParser::Tokenize(
+    const mozilla::dom::nsAStringOrJSString aSourceBuffer, Document* aDocument,
+    bool aScriptingEnabledForNoscriptParsing,
+    bool aDeclarativeShadowRootsAllowed) {
   nsIURI* uri = aDocument->GetDocumentURI();
 
   mBuilder->Init(aDocument, uri, nullptr, nullptr);
@@ -119,7 +154,7 @@ nsresult nsHtml5StringParser::Tokenize(const nsAString& aSourceBuffer,
   mBuilder->SetNodeInfoManager(aDocument->NodeInfoManager());
 
   // Mark the parser as *not* broken by passing NS_OK
-  nsresult rv = mBuilder->MarkAsBroken(NS_OK);
+  (void)mBuilder->MarkAsBroken(NS_OK);
 
   mTreeBuilder->setScriptingEnabled(aScriptingEnabledForNoscriptParsing);
   mTreeBuilder->setIsSrcdocDocument(aDocument->IsSrcdocDocument());
@@ -128,25 +163,10 @@ nsresult nsHtml5StringParser::Tokenize(const nsAString& aSourceBuffer,
       StaticPrefs::dom_lift_select_parser_restrictions_enabled());
   mBuilder->Start();
   mTokenizer->start();
-  if (!aSourceBuffer.IsEmpty()) {
-    bool lastWasCR = false;
-    nsHtml5DependentUTF16Buffer buffer(aSourceBuffer);
-    while (buffer.hasMore()) {
-      buffer.adjust(lastWasCR);
-      lastWasCR = false;
-      if (buffer.hasMore()) {
-        if (!mTokenizer->EnsureBufferSpace(buffer.getLength())) {
-          rv = mBuilder->MarkAsBroken(NS_ERROR_OUT_OF_MEMORY);
-          break;
-        }
-        lastWasCR = mTokenizer->tokenizeBuffer(&buffer);
-        if (NS_FAILED(rv = mBuilder->IsBroken())) {
-          break;
-        }
-      }
-    }
-  }
-  if (NS_SUCCEEDED(rv)) {
+  mLastWasCR = false;
+  bool ok =
+      aSourceBuffer.WalkRope((void*)this, &UTF16Callback, &Latin1Callback);
+  if (ok) {
     mTokenizer->eof();
   }
 
@@ -154,5 +174,5 @@ nsresult nsHtml5StringParser::Tokenize(const nsAString& aSourceBuffer,
   mBuilder->Finish();
   mAtomTable.Clear();
   TryCache();
-  return rv;
+  return ok ? NS_OK : NS_ERROR_OUT_OF_MEMORY;
 }

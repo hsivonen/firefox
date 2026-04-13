@@ -24,9 +24,9 @@ struct nsHtml5FastestPolicySIMD {
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static void completedNamedCharacterReference(
       nsHtml5Highlighter* aHighlighter) {}
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static int32_t accelerateAdvancementData(
-      nsHtml5Tokenizer* aTokenizer, char16_t* buf, int32_t pos,
-      int32_t endPos) {
+      nsHtml5Tokenizer* aTokenizer, Char* buf, int32_t pos, int32_t endPos) {
     // We need to check bounds for the `buf[pos]` access below to be OK.
     // Instead of just checking that `pos` isn't equal to `endPos`, let's
     // check that have at least one SIMD stride of data in the same branch,
@@ -44,9 +44,9 @@ struct nsHtml5FastestPolicySIMD {
     return mozilla::htmlaccel::AccelerateDataFastest(buf + pos, buf + endPos);
   }
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static int32_t accelerateAdvancementRawtext(
-      nsHtml5Tokenizer* aTokenizer, char16_t* buf, int32_t pos,
-      int32_t endPos) {
+      nsHtml5Tokenizer* aTokenizer, Char* buf, int32_t pos, int32_t endPos) {
     // We need to check bounds for the `buf[pos]` access below to be OK.
     // Instead of just checking that `pos` isn't equal to `endPos`, let's
     // check that have at least one SIMD stride of data in the same branch,
@@ -63,9 +63,10 @@ struct nsHtml5FastestPolicySIMD {
                                                         buf + endPos);
   }
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static int32_t
   accelerateAdvancementScriptDataEscaped(nsHtml5Tokenizer* aTokenizer,
-                                         char16_t* buf, int32_t pos,
+                                         Char* buf, int32_t pos,
                                          int32_t endPos) {
     // This state shares the SIMD part with the comment state, but this
     // wrapper needs to differ!
@@ -73,9 +74,9 @@ struct nsHtml5FastestPolicySIMD {
                                                         buf + endPos);
   }
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static int32_t accelerateAdvancementComment(
-      nsHtml5Tokenizer* aTokenizer, char16_t* buf, int32_t pos,
-      int32_t endPos) {
+      nsHtml5Tokenizer* aTokenizer, Char* buf, int32_t pos, int32_t endPos) {
     int32_t len = endPos - pos;
     int32_t strBufAvailable = aTokenizer->strBuf.length - aTokenizer->strBufLen;
     if (len > strBufAvailable) {
@@ -92,9 +93,10 @@ struct nsHtml5FastestPolicySIMD {
     return advance;
   }
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static int32_t
   accelerateAdvancementAttributeValueSingleQuoted(nsHtml5Tokenizer* aTokenizer,
-                                                  char16_t* buf, int32_t pos,
+                                                  Char* buf, int32_t pos,
                                                   int32_t endPos) {
     int32_t len = endPos - pos;
     int32_t strBufAvailable = aTokenizer->strBuf.length - aTokenizer->strBufLen;
@@ -113,9 +115,10 @@ struct nsHtml5FastestPolicySIMD {
     return advance;
   }
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static int32_t
   accelerateAdvancementAttributeValueDoubleQuoted(nsHtml5Tokenizer* aTokenizer,
-                                                  char16_t* buf, int32_t pos,
+                                                  Char* buf, int32_t pos,
                                                   int32_t endPos) {
     int32_t len = endPos - pos;
     int32_t strBufAvailable = aTokenizer->strBuf.length - aTokenizer->strBufLen;
@@ -134,22 +137,23 @@ struct nsHtml5FastestPolicySIMD {
     return advance;
   }
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static int32_t accelerateAdvancementCdataSection(
-      nsHtml5Tokenizer* aTokenizer, char16_t* buf, int32_t pos,
-      int32_t endPos) {
+      nsHtml5Tokenizer* aTokenizer, Char* buf, int32_t pos, int32_t endPos) {
     return mozilla::htmlaccel::AccelerateCdataSectionFastest(buf + pos,
                                                              buf + endPos);
   }
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static int32_t accelerateAdvancementPlaintext(
-      nsHtml5Tokenizer* aTokenizer, char16_t* buf, int32_t pos,
-      int32_t endPos) {
+      nsHtml5Tokenizer* aTokenizer, Char* buf, int32_t pos, int32_t endPos) {
     return mozilla::htmlaccel::AcceleratePlaintextFastest(buf + pos,
                                                           buf + endPos);
   }
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static char16_t checkChar(
-      nsHtml5Tokenizer* aTokenizer, char16_t* buf, int32_t pos) {
+      nsHtml5Tokenizer* aTokenizer, Char* buf, int32_t pos) {
     return buf[pos];
   }
 

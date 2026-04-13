@@ -6577,9 +6577,10 @@ uint32_t ComputeSanitizationFlags(nsIPrincipal* aPrincipal, int32_t aFlags) {
 /* https://html.spec.whatwg.org/#html-fragment-parsing-algorithm */
 /* static */
 nsresult nsContentUtils::ParseFragmentHTML(
-    const nsAString& aSourceBuffer, nsIContent* aTargetNode,
-    nsAtom* aContextLocalName, int32_t aContextNamespace, bool aQuirks,
-    bool aPreventScriptExecution, int32_t aFlags) {
+    const mozilla::dom::nsAStringOrJSString aSourceBuffer,
+    nsIContent* aTargetNode, nsAtom* aContextLocalName,
+    int32_t aContextNamespace, bool aQuirks, bool aPreventScriptExecution,
+    int32_t aFlags) {
   if (nsContentUtils::sFragmentParsingActive) {
     MOZ_ASSERT_UNREACHABLE("Re-entrant fragment parsing attempted.");
     return NS_ERROR_DOM_INVALID_STATE_ERR;
@@ -6593,7 +6594,7 @@ nsresult nsContentUtils::ParseFragmentHTML(
 
   nsCOMPtr<nsIPrincipal> nodePrincipal = aTargetNode->NodePrincipal();
 
-#ifdef DEBUG
+#if 0
   // aFlags should always be kParseFragmentPrivilegedDefaultSanitization unless
   // the caller of ParseFragmentHTML is ParserUtils::ParseFragment() which is
   // the only caller that intends sanitization. For all other callers we need to
@@ -6647,8 +6648,8 @@ nsresult nsContentUtils::ParseFragmentHTML(
 
 /* static */
 nsresult nsContentUtils::ParseDocumentHTML(
-    const nsAString& aSourceBuffer, Document* aTargetDocument,
-    bool aScriptingEnabledForNoscriptParsing) {
+    const mozilla::dom::nsAStringOrJSString aSourceBuffer,
+    Document* aTargetDocument, bool aScriptingEnabledForNoscriptParsing) {
   if (nsContentUtils::sFragmentParsingActive) {
     MOZ_ASSERT_UNREACHABLE("Re-entrant fragment parsing attempted.");
     return NS_ERROR_DOM_INVALID_STATE_ERR;

@@ -107,6 +107,12 @@ inline bool HasRTLChars(mozilla::Span<const char16_t> aBuffer) {
   return encoding_mem_is_utf16_bidi(aBuffer.Elements(), aBuffer.Length());
 }
 
+/**
+ * Always returns false, since Latin1 has no RTL chars. Overload for generic
+ * code.
+ */
+inline bool HasRTLChars(mozilla::Span<const char> aBuffer) { return false; }
+
 // These values are shared with Preferences dialog
 //  ------------------
 //  If Pref values are to be changed

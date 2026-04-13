@@ -4,6 +4,15 @@
 
 #include "nsHtml5Tokenizer.h"
 
+int32_t nsHtml5Tokenizer::StateLoopFastestALU(int32_t state, unsigned char c,
+                                              int32_t pos, unsigned char* buf,
+                                              bool reconsume,
+                                              int32_t returnState,
+                                              int32_t endPos) {
+  MOZ_RELEASE_ASSERT(false, "Inconsistent build config");
+  return 0;
+}
+
 int32_t nsHtml5Tokenizer::StateLoopFastestALU(int32_t state, char16_t c,
                                               int32_t pos, char16_t* buf,
                                               bool reconsume,

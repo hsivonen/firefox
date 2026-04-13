@@ -60,7 +60,8 @@ class nsHtml5StreamParser;
 class nsHtml5AttributeName;
 class nsHtml5ElementName;
 class nsHtml5Tokenizer;
-class nsHtml5UTF16Buffer;
+template <typename Char>
+class nsHtml5Buffer;
 class nsHtml5StateSnapshot;
 class nsHtml5Portability;
 
@@ -308,6 +309,8 @@ class nsHtml5TreeBuilder : public nsAHtml5TreeBuilderState {
  protected:
   autoJArray<char16_t, int32_t> charBuffer;
   int32_t charBufferLen;
+  autoJArray<unsigned char, int32_t> latin1Buffer;
+  int32_t latin1BufferLen;
 
  private:
   bool quirks;
@@ -336,7 +339,266 @@ class nsHtml5TreeBuilder : public nsAHtml5TreeBuilderState {
   void doctype(nsAtom* name, nsHtml5String publicIdentifier,
                nsHtml5String systemIdentifier, bool forceQuirks);
   void comment(char16_t* buf, int32_t start, int32_t length);
-  void characters(const char16_t* buf, int32_t start, int32_t length);
+
+  template <typename Char>
+  void charactersImpl(const Char* buf, int32_t start, int32_t length) {
+    if (needToDropLF) {
+      needToDropLF = false;
+      if (buf[start] == '\n') {
+        start++;
+        length--;
+        if (!length) {
+          return;
+        }
+      }
+    }
+    switch (mode) {
+      case IN_BODY:
+      case IN_CELL:
+      case IN_CAPTION: {
+        if (!isInForeignButNotHtmlOrMathTextIntegrationPoint()) {
+          reconstructTheActiveFormattingElements();
+        }
+        [[fallthrough]];
+      }
+      case TEXT: {
+        accumulateCharacters(buf, start, length);
+        return;
+      }
+      case IN_TABLE:
+      case IN_TABLE_BODY:
+      case IN_ROW: {
+        accumulateCharactersForced(buf, start, length);
+        return;
+      }
+      default: {
+        int32_t end = start + length;
+        for (int32_t i = start; i < end; i++) {
+          switch (buf[i]) {
+            case ' ':
+            case '\t':
+            case '\n':
+            case '\r':
+            case '\f': {
+              switch (mode) {
+                case INITIAL:
+                case BEFORE_HTML:
+                case BEFORE_HEAD: {
+                  start = i + 1;
+                  continue;
+                }
+                case IN_HEAD:
+                case IN_HEAD_NOSCRIPT:
+                case AFTER_HEAD:
+                case IN_COLUMN_GROUP:
+                case IN_FRAMESET:
+                case AFTER_FRAMESET: {
+                  continue;
+                }
+                case FRAMESET_OK:
+                case IN_TEMPLATE:
+                case IN_BODY:
+                case IN_CELL:
+                case IN_CAPTION: {
+                  if (start < i) {
+                    accumulateCharacters(buf, start, i - start);
+                    start = i;
+                  }
+                  if (!isInForeignButNotHtmlOrMathTextIntegrationPoint()) {
+                    flushCharacters();
+                    reconstructTheActiveFormattingElements();
+                  }
+                  NS_HTML5_BREAK(charactersloop);
+                }
+                case IN_SELECT:
+                case IN_SELECT_IN_TABLE: {
+                  MOZ_ASSERT(!noInSelectMode);
+                  NS_HTML5_BREAK(charactersloop);
+                }
+                case IN_TABLE:
+                case IN_TABLE_BODY:
+                case IN_ROW: {
+                  accumulateCharactersForced(buf, i, 1);
+                  start = i + 1;
+                  continue;
+                }
+                case AFTER_BODY:
+                case AFTER_AFTER_BODY:
+                case AFTER_AFTER_FRAMESET: {
+                  if (start < i) {
+                    accumulateCharacters(buf, start, i - start);
+                    start = i;
+                  }
+                  flushCharacters();
+                  reconstructTheActiveFormattingElements();
+                  continue;
+                }
+              }
+              MOZ_FALLTHROUGH_ASSERT();
+            }
+            default: {
+              switch (mode) {
+                case INITIAL: {
+                  documentModeInternal(QUIRKS_MODE, nullptr, nullptr);
+                  mode = BEFORE_HTML;
+                  i--;
+                  continue;
+                }
+                case BEFORE_HTML: {
+                  appendHtmlElementToDocumentAndPush();
+                  mode = BEFORE_HEAD;
+                  i--;
+                  continue;
+                }
+                case BEFORE_HEAD: {
+                  if (start < i) {
+                    accumulateCharacters(buf, start, i - start);
+                    start = i;
+                  }
+                  flushCharacters();
+                  appendToCurrentNodeAndPushHeadElement(
+                      nsHtml5HtmlAttributes::EMPTY_ATTRIBUTES);
+                  mode = IN_HEAD;
+                  i--;
+                  continue;
+                }
+                case IN_HEAD: {
+                  if (start < i) {
+                    accumulateCharacters(buf, start, i - start);
+                    start = i;
+                  }
+                  flushCharacters();
+                  pop();
+                  mode = AFTER_HEAD;
+                  i--;
+                  continue;
+                }
+                case IN_HEAD_NOSCRIPT: {
+                  if (start < i) {
+                    accumulateCharacters(buf, start, i - start);
+                    start = i;
+                  }
+                  errNonSpaceInNoscriptInHead();
+                  flushCharacters();
+                  pop();
+                  mode = IN_HEAD;
+                  i--;
+                  continue;
+                }
+                case AFTER_HEAD: {
+                  if (start < i) {
+                    accumulateCharacters(buf, start, i - start);
+                    start = i;
+                  }
+                  flushCharacters();
+                  appendToCurrentNodeAndPushBodyElement();
+                  mode = FRAMESET_OK;
+                  i--;
+                  continue;
+                }
+                case FRAMESET_OK: {
+                  framesetOk = false;
+                  mode = IN_BODY;
+                  i--;
+                  continue;
+                }
+                case IN_TEMPLATE:
+                case IN_BODY:
+                case IN_CELL:
+                case IN_CAPTION: {
+                  if (start < i) {
+                    accumulateCharacters(buf, start, i - start);
+                    start = i;
+                  }
+                  if (!isInForeignButNotHtmlOrMathTextIntegrationPoint()) {
+                    flushCharacters();
+                    reconstructTheActiveFormattingElements();
+                  }
+                  NS_HTML5_BREAK(charactersloop);
+                }
+                case IN_TABLE:
+                case IN_TABLE_BODY:
+                case IN_ROW: {
+                  accumulateCharactersForced(buf, i, 1);
+                  start = i + 1;
+                  continue;
+                }
+                case IN_COLUMN_GROUP: {
+                  if (start < i) {
+                    accumulateCharacters(buf, start, i - start);
+                    start = i;
+                  }
+                  if (!currentPtr || stack[currentPtr]->getGroup() ==
+                                         nsHtml5TreeBuilder::TEMPLATE) {
+                    errNonSpaceInColgroupInFragment();
+                    start = i + 1;
+                    continue;
+                  }
+                  flushCharacters();
+                  pop();
+                  mode = IN_TABLE;
+                  i--;
+                  continue;
+                }
+                case IN_SELECT:
+                case IN_SELECT_IN_TABLE: {
+                  MOZ_ASSERT(!noInSelectMode);
+                  NS_HTML5_BREAK(charactersloop);
+                }
+                case AFTER_BODY: {
+                  errNonSpaceAfterBody();
+
+                  mode = framesetOk ? FRAMESET_OK : IN_BODY;
+                  i--;
+                  continue;
+                }
+                case IN_FRAMESET: {
+                  if (start < i) {
+                    accumulateCharacters(buf, start, i - start);
+                  }
+                  errNonSpaceInFrameset();
+                  start = i + 1;
+                  continue;
+                }
+                case AFTER_FRAMESET: {
+                  if (start < i) {
+                    accumulateCharacters(buf, start, i - start);
+                  }
+                  errNonSpaceAfterFrameset();
+                  start = i + 1;
+                  continue;
+                }
+                case AFTER_AFTER_BODY: {
+                  errNonSpaceInTrailer();
+                  mode = framesetOk ? FRAMESET_OK : IN_BODY;
+                  i--;
+                  continue;
+                }
+                case AFTER_AFTER_FRAMESET: {
+                  if (start < i) {
+                    accumulateCharacters(buf, start, i - start);
+                  }
+                  errNonSpaceInTrailer();
+                  start = i + 1;
+                  continue;
+                }
+              }
+            }
+          }
+        }
+      charactersloop_end:;
+        if (start < end) {
+          accumulateCharacters(buf, start, end - start);
+        }
+      }
+    }
+  }
+
+  void clearCharBuffer() {
+    charBufferLen = 0;
+    latin1BufferLen = 0;
+  }
+
   void zeroOriginatingReplacementCharacter();
   void zeroOrReplacementCharacter();
   void eof();
@@ -500,6 +762,8 @@ class nsHtml5TreeBuilder : public nsAHtml5TreeBuilderState {
 
  protected:
   void accumulateCharacters(const char16_t* buf, int32_t start, int32_t length);
+  void accumulateCharacters(const unsigned char* buf, int32_t start,
+                            int32_t length);
   void requestSuspension();
   nsIContentHandle* createElement(int32_t ns, nsAtom* name,
                                   nsHtml5HtmlAttributes* attributes,
@@ -525,11 +789,9 @@ class nsHtml5TreeBuilder : public nsAHtml5TreeBuilderState {
       nsIContentHandle* form, nsIContentHandle* table,
       nsIContentHandle* stackParent, nsHtml5ContentCreatorFunction creator);
   ;
-  void insertFosterParentedCharacters(char16_t* buf, int32_t start,
-                                      int32_t length, nsIContentHandle* table,
+  void insertFosterParentedCharacters(nsIContentHandle* table,
                                       nsIContentHandle* stackParent);
-  void appendCharacters(nsIContentHandle* parent, char16_t* buf, int32_t start,
-                        int32_t length);
+  void appendCharacters(nsIContentHandle* parent);
   void appendComment(nsIContentHandle* parent, char16_t* buf, int32_t start,
                      int32_t length);
   void appendCommentToDocument(char16_t* buf, int32_t start, int32_t length);
@@ -569,6 +831,7 @@ class nsHtml5TreeBuilder : public nsAHtml5TreeBuilderState {
   void flushCharacters();
 
  private:
+  // XXX extend to Latin1
   bool charBufferContainsNonWhitespace();
 
  public:

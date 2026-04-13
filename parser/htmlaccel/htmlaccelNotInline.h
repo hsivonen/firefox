@@ -16,6 +16,8 @@ namespace mozilla::htmlaccel {
 // the complexity to do that.
 MOZ_NEVER_INLINE bool ContainsMarkup(const char16_t* aPtr,
                                      const char16_t* aEnd);
+MOZ_NEVER_INLINE bool ContainsMarkup(const unsigned char* aPtr,
+                                     const unsigned char* aEnd);
 
 // HTML Serializer functions
 
@@ -68,6 +70,10 @@ MOZ_NEVER_INLINE uint32_t CountEscapedInAttributeValue(const char16_t* aPtr,
 // to MOZ_ALWAYS_INLINE_EVEN_DEBUG to allow the constants to move further
 // up to the top of nsHtml5Tokenizer::stateLoop.
 
+/// The innerHTML / DOMParser case for the data state in the HTML parser; Latin1
+MOZ_NEVER_INLINE int32_t AccelerateDataFastest(const unsigned char* aPtr,
+                                               const unsigned char* aEnd);
+
 /// The innerHTML / DOMParser case for the data state in the HTML parser
 MOZ_NEVER_INLINE int32_t AccelerateDataFastest(const char16_t* aPtr,
                                                const char16_t* aEnd);
@@ -79,6 +85,11 @@ MOZ_NEVER_INLINE int32_t AccelerateDataViewSource(const char16_t* aPtr,
 /// Normal network case for the data state in the HTML parser
 MOZ_NEVER_INLINE int32_t AccelerateDataLineCol(const char16_t* aPtr,
                                                const char16_t* aEnd);
+
+/// The innerHTML / DOMParser case for the RAWTEXT state in the HTML parser;
+/// Latin1
+MOZ_NEVER_INLINE int32_t AccelerateRawtextFastest(const unsigned char* aPtr,
+                                                  const unsigned char* aEnd);
 
 /// The innerHTML / DOMParser case for the RAWTEXT state in the HTML parser
 MOZ_NEVER_INLINE int32_t AccelerateRawtextFastest(const char16_t* aPtr,
@@ -92,6 +103,11 @@ MOZ_NEVER_INLINE int32_t AccelerateRawtextViewSource(const char16_t* aPtr,
 MOZ_NEVER_INLINE int32_t AccelerateRawtextLineCol(const char16_t* aPtr,
                                                   const char16_t* aEnd);
 
+/// The innerHTML / DOMParser case for the comment state in the HTML parser;
+/// Latin1
+MOZ_NEVER_INLINE int32_t AccelerateCommentFastest(const unsigned char* aPtr,
+                                                  const unsigned char* aEnd);
+
 /// The innerHTML / DOMParser case for the comment state in the HTML parser
 MOZ_NEVER_INLINE int32_t AccelerateCommentFastest(const char16_t* aPtr,
                                                   const char16_t* aEnd);
@@ -103,6 +119,11 @@ MOZ_NEVER_INLINE int32_t AccelerateCommentViewSource(const char16_t* aPtr,
 /// Normal network case for the comment state in the HTML parser
 MOZ_NEVER_INLINE int32_t AccelerateCommentLineCol(const char16_t* aPtr,
                                                   const char16_t* aEnd);
+
+/// The innerHTML / DOMParser case for the attribute value single-quoted state
+/// in the HTML parser; Latin1
+MOZ_NEVER_INLINE int32_t AccelerateAttributeValueSingleQuotedFastest(
+    const unsigned char* aPtr, const unsigned char* aEnd);
 
 /// The innerHTML / DOMParser case for the attribute value single-quoted state
 /// in the HTML parser
@@ -120,6 +141,11 @@ MOZ_NEVER_INLINE int32_t AccelerateAttributeValueSingleQuotedLineCol(
     const char16_t* aPtr, const char16_t* aEnd);
 
 /// The innerHTML / DOMParser case for the attribute value double-quoted state
+/// in the HTML parser; Latin1
+MOZ_NEVER_INLINE int32_t AccelerateAttributeValueDoubleQuotedFastest(
+    const unsigned char* aPtr, const unsigned char* aEnd);
+
+/// The innerHTML / DOMParser case for the attribute value double-quoted state
 /// in the HTML parser
 MOZ_NEVER_INLINE int32_t AccelerateAttributeValueDoubleQuotedFastest(
     const char16_t* aPtr, const char16_t* aEnd);
@@ -135,6 +161,11 @@ MOZ_NEVER_INLINE int32_t AccelerateAttributeValueDoubleQuotedLineCol(
     const char16_t* aPtr, const char16_t* aEnd);
 
 /// The innerHTML / DOMParser case for the CDATA section state in the HTML
+/// parser; Latin1
+MOZ_NEVER_INLINE int32_t AccelerateCdataSectionFastest(
+    const unsigned char* aPtr, const unsigned char* aEnd);
+
+/// The innerHTML / DOMParser case for the CDATA section state in the HTML
 /// parser
 MOZ_NEVER_INLINE int32_t AccelerateCdataSectionFastest(const char16_t* aPtr,
                                                        const char16_t* aEnd);
@@ -146,6 +177,11 @@ MOZ_NEVER_INLINE int32_t AccelerateCdataSectionViewSource(const char16_t* aPtr,
 /// Normal network case for the CDATA section state in the HTML parser
 MOZ_NEVER_INLINE int32_t AccelerateCdataSectionLineCol(const char16_t* aPtr,
                                                        const char16_t* aEnd);
+
+/// The innerHTML / DOMParser case for the plaintext state in the HTML parser;
+/// Latin1
+MOZ_NEVER_INLINE int32_t AcceleratePlaintextFastest(const unsigned char* aPtr,
+                                                    const unsigned char* aEnd);
 
 /// The innerHTML / DOMParser case for the plaintext state in the HTML parser
 MOZ_NEVER_INLINE int32_t AcceleratePlaintextFastest(const char16_t* aPtr,

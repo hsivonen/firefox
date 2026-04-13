@@ -264,7 +264,7 @@ partial interface Element {
 // https://html.spec.whatwg.org/multipage/dynamic-markup-insertion.html#dom-parsing-and-serialization
 partial interface Element {
   [CEReactions, SetterNeedsSubjectPrincipal=NonSystem, Pure, SetterThrows, GetterCanOOM]
-  attribute (TrustedHTML or [LegacyNullToEmptyString] DOMString) innerHTML;
+  attribute JSString innerHTML;
   [CEReactions, SetterNeedsSubjectPrincipal=NonSystem, Pure, SetterThrows]
   attribute (TrustedHTML or [LegacyNullToEmptyString] DOMString) outerHTML;
   [CEReactions, NeedsSubjectPrincipal=NonSystem, Throws]

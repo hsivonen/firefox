@@ -6,6 +6,7 @@
 #define mozilla_dom_HTMLStyleElement_h
 
 #include "mozilla/dom/LinkStyle.h"
+#include "mozilla/dom/nsAStringOrJSString.h"
 #include "nsGenericHTMLElement.h"
 #include "nsStubMutationObserver.h"
 
@@ -30,7 +31,7 @@ class HTMLStyleElement final : public nsGenericHTMLElement,
   void GetInnerHTML(nsAString& aInnerHTML, OOMReporter& aError) override;
   using nsGenericHTMLElement::SetInnerHTML;
 
-  void SetInnerHTMLTrusted(const nsAString& aInnerHTML,
+  void SetInnerHTMLTrusted(const nsAStringOrJSString aInnerHTML,
                            nsIPrincipal* aSubjectPrincipal,
                            mozilla::ErrorResult& aError) override;
 

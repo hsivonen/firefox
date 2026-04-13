@@ -1956,43 +1956,51 @@ void FragmentOrElement::GetMarkup(bool aIncludeSelf, nsAString& aMarkup) {
   }
 }
 
-static bool ContainsMarkup(const nsAString& aStr) {
+template <typename Char>
+static bool DoesNotContainMarkup(void* aIgnored,
+                                 mozilla::Span<const Char> aSegment) {
   // Note: we can't use FindCharInSet because null is one of the characters we
   // want to search for.
-  const char16_t* start = aStr.BeginReading();
-  const char16_t* end = aStr.EndReading();
+  const Char* start = aSegment.Elements();
+  const Char* end = start + aSegment.Length();
 
 #ifdef MOZ_MAY_HAVE_HTMLACCEL
   if (mozilla::htmlaccel::htmlaccelEnabled()) {
-    // We need to check for the empty string in order to
-    // dereference `start` for the '<' check. We might as well
-    // check that we have a full SIMD stride.
-    if (end - start >= 16) {
-      // Optimize the case where the input starts with a tag.
-      if (*start == u'<') {
-        return true;
-      }
-      // Curiously, this doesn't look like much of an optimization on Zen 3,
-      // but since it is an optimization on M3 Pro and Skylake, let's do this.
-      return mozilla::htmlaccel::ContainsMarkup(start, end);
+    MOZ_ASSERT(start < end,
+               "Rope walk is supposed to guarantee non-empty segments.");
+    // Optimize the case where the input starts with a tag.
+    // Relying on the rope walk providing non-empty segments for the dereference
+    // to be OK.
+    if (*start == Char('<')) {
+      return false;
     }
+    // Curiously, this doesn't look like much of an optimization on Zen 3,
+    // but since it is an optimization on M3 Pro and Skylake, let's do this.
+    return !mozilla::htmlaccel::ContainsMarkup(start, end);
   }
 #endif
 
   while (start != end) {
-    char16_t c = *start;
-    if (c == char16_t('<') || c == char16_t('&') || c == char16_t('\r') ||
-        c == char16_t('\0')) {
-      return true;
+    Char c = *start;
+    if (c == Char('<') || c == Char('&') || c == Char('\r') ||
+        c == Char('\0')) {
+      return false;
     }
     ++start;
   }
 
-  return false;
+  return true;
 }
 
-void FragmentOrElement::SetInnerHTMLInternal(const nsAString& aInnerHTML,
-                                             ErrorResult& aError) {
+// The check is "does not contain" instead of "contains" to
+// flatten OOM into `false`.
+static bool DoesNotContainMarkup(const nsAStringOrJSString aInnerHTML) {
+  return aInnerHTML.WalkRopeUnsafe(nullptr, DoesNotContainMarkup<char16_t>,
+                                   DoesNotContainMarkup<unsigned char>);
+}
+
+void FragmentOrElement::SetInnerHTMLInternal(
+    const nsAStringOrJSString aInnerHTML, ErrorResult& aError) {
   // Keep "this" alive should be guaranteed by the caller, and also the content
   // of a template element (if this is one) should never been released by from
   // this during this call.  Therefore, using raw pointer here is safe.
@@ -2005,15 +2013,17 @@ void FragmentOrElement::SetInnerHTMLInternal(const nsAString& aInnerHTML,
     target = frag;
   }
   // Fast-path for strings with no markup. Limit this to short strings, to
-  // avoid ContainsMarkup taking too long. The choice for 100 is based on
+  // avoid DoesNotContainMarkup taking too long. The choice for 100 is based on
   // gut feeling.
   //
   // Don't do this for elements with a weird parser insertion mode, for
   // instance setting innerHTML = "" on a <html> element should add the
   // optional <head> and <body> elements.
   if (!target->HasWeirdParserInsertionMode() && aInnerHTML.Length() < 100 &&
-      !ContainsMarkup(aInnerHTML)) {
-    aError = nsContentUtils::SetNodeTextContent(target, aInnerHTML, false);
+      DoesNotContainMarkup(aInnerHTML)) {
+    nsString str;
+    aInnerHTML.AssignTo(str);
+    aError = nsContentUtils::SetNodeTextContent(target, str, false);
     return;
   }
 
@@ -2053,8 +2063,10 @@ void FragmentOrElement::SetInnerHTMLInternal(const nsAString& aInnerHTML,
     }
     mb.NodesAdded();
   } else {
+    nsAutoString str;
+    aInnerHTML.AssignTo(str);
     RefPtr<DocumentFragment> df = nsContentUtils::CreateContextualFragment(
-        parseContext, aInnerHTML, true, aError);
+        parseContext, str, true, aError);
     if (!aError.Failed()) {
       // Suppress assertion about node removal mutation events that can't have
       // listeners anyway, because no one has had the chance to register

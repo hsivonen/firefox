@@ -8,15 +8,18 @@
 #include "nscore.h"
 #include "nsHtml5OwningUTF16Buffer.h"
 
-class MOZ_STACK_CLASS nsHtml5DependentUTF16Buffer : public nsHtml5UTF16Buffer {
+template <typename Char>
+class MOZ_STACK_CLASS nsHtml5DependentBuffer : public nsHtml5Buffer<Char> {
  public:
   /**
    * Wraps a string without taking ownership of the buffer. aToWrap MUST NOT
    * go away or be shortened while nsHtml5DependentUTF16Buffer is in use.
    */
-  explicit nsHtml5DependentUTF16Buffer(const nsAString& aToWrap);
+  explicit nsHtml5DependentBuffer(mozilla::Span<const Char> aToWrap)
+      : nsHtml5Buffer<Char>(const_cast<Char*>(aToWrap.Elements()),
+                            aToWrap.Length()) {}
 
-  ~nsHtml5DependentUTF16Buffer();
+  ~nsHtml5DependentBuffer() {};
 
   /**
    * Copies the currently unconsumed part of this buffer into a new
@@ -24,7 +27,21 @@ class MOZ_STACK_CLASS nsHtml5DependentUTF16Buffer : public nsHtml5UTF16Buffer {
    * with a fallible allocator. If the allocation fails, nullptr is returned.
    * @return heap-allocated copy or nullptr if memory allocation failed
    */
-  already_AddRefed<nsHtml5OwningUTF16Buffer> FalliblyCopyAsOwningBuffer();
+  template <typename = std::enable_if<std::is_same_v<Char, char16_t>>>
+  already_AddRefed<nsHtml5OwningUTF16Buffer> FalliblyCopyAsOwningBuffer() {
+    int32_t newLength = this->getEnd() - this->getStart();
+    RefPtr<nsHtml5OwningUTF16Buffer> newObj =
+        nsHtml5OwningUTF16Buffer::FalliblyCreate(newLength);
+    if (!newObj) {
+      return nullptr;
+    }
+    newObj->setEnd(newLength);
+    memcpy(newObj->getBuffer(), this->getBuffer() + this->getStart(),
+           newLength * sizeof(char16_t));
+    return newObj.forget();
+  }
 };
+
+using nsHtml5DependentUTF16Buffer = nsHtml5DependentBuffer<char16_t>;
 
 #endif  // nsHtml5DependentUTF16Buffer_h

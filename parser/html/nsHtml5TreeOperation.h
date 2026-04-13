@@ -579,12 +579,13 @@ class nsHtml5TreeOperation final {
   using Encoding = mozilla::Encoding;
 
  public:
-  static nsresult AppendTextToTextNode(const char16_t* aBuffer,
-                                       uint32_t aLength,
+  template <typename Char>
+  static nsresult AppendTextToTextNode(const Char* aBuffer, uint32_t aLength,
                                        mozilla::dom::Text* aTextNode,
                                        nsHtml5DocumentBuilder* aBuilder);
 
-  static nsresult AppendText(const char16_t* aBuffer, uint32_t aLength,
+  template <typename Char>
+  static nsresult AppendText(const Char* aBuffer, uint32_t aLength,
                              nsIContent* aParent,
                              nsHtml5DocumentBuilder* aBuilder);
 
@@ -639,7 +640,8 @@ class nsHtml5TreeOperation final {
   static nsresult AppendIsindexPrompt(nsIContent* parent,
                                       nsHtml5DocumentBuilder* aBuilder);
 
-  static nsresult FosterParentText(nsIContent* aStackParent, char16_t* aBuffer,
+  template <typename Char>
+  static nsresult FosterParentText(nsIContent* aStackParent, Char* aBuffer,
                                    uint32_t aLength, nsIContent* aTable,
                                    nsHtml5DocumentBuilder* aBuilder);
 

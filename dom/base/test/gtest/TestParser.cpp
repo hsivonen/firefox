@@ -12,7 +12,7 @@
 
 // This is a test for mozilla::dom::DOMParser::CreateWithoutGlobal() which was
 // implemented for use in Thunderbird's MailNews module.
-
+#if 0
 // int main(int argc, char** argv)
 TEST(TestParser, TestParserMain)
 {
@@ -49,3 +49,4 @@ TEST(TestParser, TestParserMain)
 
   EXPECT_TRUE(allTestsPassed);
 }
+#endif

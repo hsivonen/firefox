@@ -655,7 +655,7 @@ nsresult nsHtml5Parser::ParseUntilBlocked() {
       if (!mTokenizer->EnsureBufferSpace(mFirstBuffer->getLength())) {
         return mExecutor->MarkAsBroken(NS_ERROR_OUT_OF_MEMORY);
       }
-      mLastWasCR = mTokenizer->tokenizeBuffer(mFirstBuffer);
+      mLastWasCR = mTokenizer->tokenizeBuffer(mFirstBuffer.get());
       nsresult rv;
       if (NS_FAILED((rv = mTreeBuilder->IsBroken()))) {
         return mExecutor->MarkAsBroken(rv);

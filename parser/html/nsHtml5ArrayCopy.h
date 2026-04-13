@@ -23,25 +23,60 @@
 #ifndef nsHtml5ArrayCopy_h
 #define nsHtml5ArrayCopy_h
 
+#include "mozilla/Latin1.h"
+
 class nsHtml5StackNode;
 
 // Unfortunately, these don't work as template functions because the arguments
 // would need coercion from a template class, which complicates things.
 class nsHtml5ArrayCopy {
  public:
-  static inline void arraycopy(char16_t* source, int32_t sourceOffset,
+  static inline void arraycopy(const char16_t* source, int32_t sourceOffset,
+                               unsigned char* target, int32_t targetOffset,
+                               int32_t length) {
+    const char16_t* srcWithOffset = source + sourceOffset;
+    unsigned char* dstWithOffset = target + targetOffset;
+    mozilla::LossyConvertUtf16toLatin1(
+        mozilla::Span(srcWithOffset, length),
+        mozilla::Span(reinterpret_cast<char*>(dstWithOffset), length));
+  }
+
+  static inline void arraycopy(const unsigned char* source,
+                               int32_t sourceOffset, char16_t* target,
+                               int32_t targetOffset, int32_t length) {
+    const unsigned char* srcWithOffset = source + sourceOffset;
+    char16_t* dstWithOffset = target + targetOffset;
+    mozilla::ConvertLatin1toUtf16(
+        mozilla::Span(reinterpret_cast<const char*>(srcWithOffset), length),
+        mozilla::Span(dstWithOffset, length));
+  }
+
+  static inline void arraycopy(const unsigned char* source, char16_t* target,
+                               int32_t length) {
+    mozilla::ConvertLatin1toUtf16(
+        mozilla::Span(reinterpret_cast<const char*>(source), length),
+        mozilla::Span(target, length));
+  }
+
+  static inline void arraycopy(const unsigned char* source,
+                               int32_t sourceOffset, unsigned char* target,
+                               int32_t targetOffset, int32_t length) {
+    memcpy(&(target[targetOffset]), &(source[sourceOffset]), size_t(length));
+  }
+
+  static inline void arraycopy(const char16_t* source, int32_t sourceOffset,
                                char16_t* target, int32_t targetOffset,
                                int32_t length) {
     memcpy(&(target[targetOffset]), &(source[sourceOffset]),
            size_t(length) * sizeof(char16_t));
   }
 
-  static inline void arraycopy(char16_t* source, char16_t* target,
+  static inline void arraycopy(const char16_t* source, char16_t* target,
                                int32_t length) {
     memcpy(target, source, size_t(length) * sizeof(char16_t));
   }
 
-  static inline void arraycopy(int32_t* source, int32_t* target,
+  static inline void arraycopy(const int32_t* source, int32_t* target,
                                int32_t length) {
     memcpy(target, source, size_t(length) * sizeof(int32_t));
   }

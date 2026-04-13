@@ -40,48 +40,50 @@
 
 #include "nsHtml5Tokenizer.h"
 
-char16_t nsHtml5Tokenizer::LT_GT[] = {'<', '>'};
-char16_t nsHtml5Tokenizer::LT_SOLIDUS[] = {'<', '/'};
-char16_t nsHtml5Tokenizer::RSQB_RSQB[] = {']', ']'};
+unsigned char nsHtml5Tokenizer::LT_GT[] = {'<', '>'};
+unsigned char nsHtml5Tokenizer::LT_SOLIDUS[] = {'<', '/'};
+unsigned char nsHtml5Tokenizer::RSQB_RSQB[] = {']', ']'};
 char16_t nsHtml5Tokenizer::REPLACEMENT_CHARACTER[] = {0xfffd};
-char16_t nsHtml5Tokenizer::LF[] = {'\n'};
-char16_t nsHtml5Tokenizer::CDATA_LSQB[] = {'C', 'D', 'A', 'T', 'A', '['};
-char16_t nsHtml5Tokenizer::OCTYPE[] = {'o', 'c', 't', 'y', 'p', 'e'};
-char16_t nsHtml5Tokenizer::UBLIC[] = {'u', 'b', 'l', 'i', 'c'};
-char16_t nsHtml5Tokenizer::YSTEM[] = {'y', 's', 't', 'e', 'm'};
-static char16_t const TITLE_ARR_DATA[] = {'t', 'i', 't', 'l', 'e'};
-staticJArray<char16_t, int32_t> nsHtml5Tokenizer::TITLE_ARR = {
+unsigned char nsHtml5Tokenizer::LF[] = {'\n'};
+
+unsigned char nsHtml5Tokenizer::CDATA_LSQB[] = {'C', 'D', 'A', 'T', 'A', '['};
+unsigned char nsHtml5Tokenizer::OCTYPE[] = {'o', 'c', 't', 'y', 'p', 'e'};
+unsigned char nsHtml5Tokenizer::UBLIC[] = {'u', 'b', 'l', 'i', 'c'};
+unsigned char nsHtml5Tokenizer::YSTEM[] = {'y', 's', 't', 'e', 'm'};
+static unsigned char const TITLE_ARR_DATA[] = {'t', 'i', 't', 'l', 'e'};
+staticJArray<unsigned char, int32_t> nsHtml5Tokenizer::TITLE_ARR = {
     TITLE_ARR_DATA, std::size(TITLE_ARR_DATA)};
-static char16_t const SCRIPT_ARR_DATA[] = {'s', 'c', 'r', 'i', 'p', 't'};
-staticJArray<char16_t, int32_t> nsHtml5Tokenizer::SCRIPT_ARR = {
+static unsigned char const SCRIPT_ARR_DATA[] = {'s', 'c', 'r', 'i', 'p', 't'};
+staticJArray<unsigned char, int32_t> nsHtml5Tokenizer::SCRIPT_ARR = {
     SCRIPT_ARR_DATA, std::size(SCRIPT_ARR_DATA)};
-static char16_t const STYLE_ARR_DATA[] = {'s', 't', 'y', 'l', 'e'};
-staticJArray<char16_t, int32_t> nsHtml5Tokenizer::STYLE_ARR = {
+static unsigned char const STYLE_ARR_DATA[] = {'s', 't', 'y', 'l', 'e'};
+staticJArray<unsigned char, int32_t> nsHtml5Tokenizer::STYLE_ARR = {
     STYLE_ARR_DATA, std::size(STYLE_ARR_DATA)};
-static char16_t const PLAINTEXT_ARR_DATA[] = {'p', 'l', 'a', 'i', 'n',
-                                              't', 'e', 'x', 't'};
-staticJArray<char16_t, int32_t> nsHtml5Tokenizer::PLAINTEXT_ARR = {
+static unsigned char const PLAINTEXT_ARR_DATA[] = {'p', 'l', 'a', 'i', 'n',
+                                                   't', 'e', 'x', 't'};
+staticJArray<unsigned char, int32_t> nsHtml5Tokenizer::PLAINTEXT_ARR = {
     PLAINTEXT_ARR_DATA, std::size(PLAINTEXT_ARR_DATA)};
-static char16_t const XMP_ARR_DATA[] = {'x', 'm', 'p'};
-staticJArray<char16_t, int32_t> nsHtml5Tokenizer::XMP_ARR = {
+static unsigned char const XMP_ARR_DATA[] = {'x', 'm', 'p'};
+staticJArray<unsigned char, int32_t> nsHtml5Tokenizer::XMP_ARR = {
     XMP_ARR_DATA, std::size(XMP_ARR_DATA)};
-static char16_t const TEXTAREA_ARR_DATA[] = {'t', 'e', 'x', 't',
-                                             'a', 'r', 'e', 'a'};
-staticJArray<char16_t, int32_t> nsHtml5Tokenizer::TEXTAREA_ARR = {
+static unsigned char const TEXTAREA_ARR_DATA[] = {'t', 'e', 'x', 't',
+                                                  'a', 'r', 'e', 'a'};
+staticJArray<unsigned char, int32_t> nsHtml5Tokenizer::TEXTAREA_ARR = {
     TEXTAREA_ARR_DATA, std::size(TEXTAREA_ARR_DATA)};
-static char16_t const IFRAME_ARR_DATA[] = {'i', 'f', 'r', 'a', 'm', 'e'};
-staticJArray<char16_t, int32_t> nsHtml5Tokenizer::IFRAME_ARR = {
+static unsigned char const IFRAME_ARR_DATA[] = {'i', 'f', 'r', 'a', 'm', 'e'};
+staticJArray<unsigned char, int32_t> nsHtml5Tokenizer::IFRAME_ARR = {
     IFRAME_ARR_DATA, std::size(IFRAME_ARR_DATA)};
-static char16_t const NOEMBED_ARR_DATA[] = {'n', 'o', 'e', 'm', 'b', 'e', 'd'};
-staticJArray<char16_t, int32_t> nsHtml5Tokenizer::NOEMBED_ARR = {
+static unsigned char const NOEMBED_ARR_DATA[] = {'n', 'o', 'e', 'm',
+                                                 'b', 'e', 'd'};
+staticJArray<unsigned char, int32_t> nsHtml5Tokenizer::NOEMBED_ARR = {
     NOEMBED_ARR_DATA, std::size(NOEMBED_ARR_DATA)};
-static char16_t const NOSCRIPT_ARR_DATA[] = {'n', 'o', 's', 'c',
-                                             'r', 'i', 'p', 't'};
-staticJArray<char16_t, int32_t> nsHtml5Tokenizer::NOSCRIPT_ARR = {
+static unsigned char const NOSCRIPT_ARR_DATA[] = {'n', 'o', 's', 'c',
+                                                  'r', 'i', 'p', 't'};
+staticJArray<unsigned char, int32_t> nsHtml5Tokenizer::NOSCRIPT_ARR = {
     NOSCRIPT_ARR_DATA, std::size(NOSCRIPT_ARR_DATA)};
-static char16_t const NOFRAMES_ARR_DATA[] = {'n', 'o', 'f', 'r',
-                                             'a', 'm', 'e', 's'};
-staticJArray<char16_t, int32_t> nsHtml5Tokenizer::NOFRAMES_ARR = {
+static unsigned char const NOFRAMES_ARR_DATA[] = {'n', 'o', 'f', 'r',
+                                                  'a', 'm', 'e', 's'};
+staticJArray<unsigned char, int32_t> nsHtml5Tokenizer::NOFRAMES_ARR = {
     NOFRAMES_ARR_DATA, std::size(NOFRAMES_ARR_DATA)};
 
 nsHtml5Tokenizer::nsHtml5Tokenizer(nsHtml5TreeBuilder* tokenHandler,
@@ -249,13 +251,6 @@ void nsHtml5Tokenizer::emitComment(int32_t provisionalHyphens, int32_t pos) {
   suspendIfRequestedAfterCurrentNonTextToken();
 }
 
-void nsHtml5Tokenizer::flushChars(char16_t* buf, int32_t pos) {
-  if (pos > cstart) {
-    tokenHandler->characters(buf, cstart, pos - cstart);
-  }
-  cstart = INT32_MAX;
-}
-
 void nsHtml5Tokenizer::strBufToElementNameString() {
   if (containsHyphen) {
     nsAtom* annotationName = nsHtml5ElementName::ELT_ANNOTATION_XML->getName();
@@ -378,41 +373,9 @@ void nsHtml5Tokenizer::start() {
   }
 }
 
-bool nsHtml5Tokenizer::tokenizeBuffer(nsHtml5UTF16Buffer* buffer) {
-  int32_t state = stateSave;
-  int32_t returnState = returnStateSave;
-  char16_t c = '\0';
-  shouldSuspend = false;
-  lastCR = false;
-  int32_t start = buffer->getStart();
-  int32_t end = buffer->getEnd();
-  int32_t pos = start - 1;
-  switch (state) {
-    case DATA:
-    case RCDATA:
-    case SCRIPT_DATA:
-    case PLAINTEXT:
-    case RAWTEXT:
-    case CDATA_SECTION:
-    case SCRIPT_DATA_ESCAPED:
-    case SCRIPT_DATA_ESCAPE_START:
-    case SCRIPT_DATA_ESCAPE_START_DASH:
-    case SCRIPT_DATA_ESCAPED_DASH:
-    case SCRIPT_DATA_ESCAPED_DASH_DASH:
-    case SCRIPT_DATA_DOUBLE_ESCAPE_START:
-    case SCRIPT_DATA_DOUBLE_ESCAPED:
-    case SCRIPT_DATA_DOUBLE_ESCAPED_LESS_THAN_SIGN:
-    case SCRIPT_DATA_DOUBLE_ESCAPED_DASH:
-    case SCRIPT_DATA_DOUBLE_ESCAPED_DASH_DASH:
-    case SCRIPT_DATA_DOUBLE_ESCAPE_END: {
-      cstart = start;
-      break;
-    }
-    default: {
-      cstart = INT32_MAX;
-      break;
-    }
-  }
+int32_t nsHtml5Tokenizer::StateLoopWrap(int32_t state, char16_t c, int32_t pos,
+                                        nsHtml5Buffer<char16_t>* buffer,
+                                        int32_t returnState) {
   if (mViewSource) {
     mViewSource->SetBuffer(buffer);
     if (mozilla::htmlaccel::htmlaccelEnabled()) {
@@ -438,12 +401,19 @@ bool nsHtml5Tokenizer::tokenizeBuffer(nsHtml5UTF16Buffer* buffer) {
     pos = StateLoopFastestALU(state, c, pos, buffer->getBuffer(), false,
                               returnState, buffer->getEnd());
   }
-  if (pos == end) {
-    buffer->setStart(pos);
-  } else {
-    buffer->setStart(pos + 1);
+  return pos;
+}
+
+int32_t nsHtml5Tokenizer::StateLoopWrap(int32_t state, unsigned char c,
+                                        int32_t pos,
+                                        nsHtml5Buffer<unsigned char>* buffer,
+                                        int32_t returnState) {
+  if (mozilla::htmlaccel::htmlaccelEnabled()) {
+    return StateLoopFastestSIMD(state, c, pos, buffer->getBuffer(), false,
+                                returnState, buffer->getEnd());
   }
-  return lastCR;
+  return StateLoopFastestALU(state, c, pos, buffer->getBuffer(), false,
+                             returnState, buffer->getEnd());
 }
 
 void nsHtml5Tokenizer::initDoctypeFields() {
@@ -458,26 +428,6 @@ void nsHtml5Tokenizer::initDoctypeFields() {
     publicIdentifier = nullptr;
   }
   forceQuirks = false;
-}
-
-void nsHtml5Tokenizer::emitReplacementCharacter(char16_t* buf, int32_t pos) {
-  flushChars(buf, pos);
-  tokenHandler->zeroOriginatingReplacementCharacter();
-  cstart = pos + 1;
-}
-
-void nsHtml5Tokenizer::maybeEmitReplacementCharacter(char16_t* buf,
-                                                     int32_t pos) {
-  flushChars(buf, pos);
-  tokenHandler->zeroOrReplacementCharacter();
-  cstart = pos + 1;
-}
-
-void nsHtml5Tokenizer::emitPlaintextReplacementCharacter(char16_t* buf,
-                                                         int32_t pos) {
-  flushChars(buf, pos);
-  tokenHandler->characters(REPLACEMENT_CHARACTER, 0, 1);
-  cstart = pos + 1;
 }
 
 void nsHtml5Tokenizer::bogusDoctype() {

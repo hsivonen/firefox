@@ -192,13 +192,25 @@ static inline int32_t FirstNon8Bit(const char16_t* str, const char16_t* end) {
   return FirstNon8BitUnvectorized(str, end);
 }
 
-bool CharacterDataBuffer::SetTo(const char16_t* aBuffer, uint32_t aLength,
+static int32_t FirstNon8Bit(const char* str, const char* end) { return -1; }
+
+static void CopyToLatin1(const char16_t* aSrc, char* aDst, size_t aLength) {
+  LossyConvertUtf16toLatin1(mozilla::Span(aSrc, aLength),
+                            mozilla::Span(aDst, aLength));
+}
+
+static void CopyToLatin1(const char* aSrc, char* aDst, size_t aLength) {
+  memcpy(aDst, aSrc, aLength);
+}
+
+template <typename Char>
+bool CharacterDataBuffer::SetTo(const Char* aBuffer, uint32_t aLength,
                                 bool aUpdateBidi, bool aForce2b) {
   if (MOZ_UNLIKELY(aLength > NS_MAX_CHARACTER_DATA_BUFFER_LENGTH)) {
     return false;
   }
 
-  if (aForce2b && mState.mIs2b && !m2b->IsReadonly()) {
+  if (sizeof(Char) == 2 && aForce2b && mState.mIs2b && !m2b->IsReadonly()) {
     // Try to re-use our existing StringBuffer.
     uint32_t storageSize = m2b->StorageSize();
     uint32_t neededSize = aLength * sizeof(char16_t);
@@ -231,18 +243,18 @@ bool CharacterDataBuffer::SetTo(const char16_t* aBuffer, uint32_t aLength,
     return true;
   }
 
-  char16_t firstChar = *aBuffer;
+  Char firstChar = *aBuffer;
   if (!aForce2b && aLength == 1 && firstChar < 256) {
     ReleaseBuffer();
-    m1b = sSingleCharSharedString + firstChar;
+    m1b = sSingleCharSharedString + uint8_t(firstChar);
     mState.mInHeap = false;
     mState.mIs2b = false;
     mState.mLength = 1;
     return true;
   }
 
-  const char16_t* ucp = aBuffer;
-  const char16_t* uend = aBuffer + aLength;
+  const Char* ucp = aBuffer;
+  const Char* uend = aBuffer + aLength;
 
   // Check if we can use a shared string
   if (!aForce2b &&
@@ -252,13 +264,13 @@ bool CharacterDataBuffer::SetTo(const char16_t* aBuffer, uint32_t aLength,
       ++ucp;
     }
 
-    const char16_t* start = ucp;
+    const Char* start = ucp;
     while (ucp < uend && *ucp == '\n') {
       ++ucp;
     }
-    const char16_t* endNewLine = ucp;
+    const Char* endNewLine = ucp;
 
-    char16_t space = ucp < uend && *ucp == '\t' ? '\t' : ' ';
+    Char space = ucp < uend && *ucp == '\t' ? '\t' : ' ';
     while (ucp < uend && *ucp == space) {
       ++ucp;
     }
@@ -285,7 +297,8 @@ bool CharacterDataBuffer::SetTo(const char16_t* aBuffer, uint32_t aLength,
   // See if we need to store the data in ucs2 or not
   int32_t first16bit = aForce2b ? 0 : ::FirstNon8Bit(ucp, uend);
 
-  if (first16bit != -1) {  // aBuffer contains no non-8bit character
+  if (sizeof(Char) == 2 &&
+      first16bit != -1) {  // aBuffer contains no non-8bit character
     // Use ucs2 storage because we have to
     CheckedUint32 size = CheckedUint32(aLength) + 1;
     if (!size.isValid()) {
@@ -319,7 +332,7 @@ bool CharacterDataBuffer::SetTo(const char16_t* aBuffer, uint32_t aLength,
 
     ReleaseBuffer();
     // Copy data
-    LossyConvertUtf16toLatin1(Span(aBuffer, aLength), Span(buff, aLength));
+    CopyToLatin1(aBuffer, buff, aLength);
     m1b = buff;
     mState.mIs2b = false;
   }
@@ -330,6 +343,15 @@ bool CharacterDataBuffer::SetTo(const char16_t* aBuffer, uint32_t aLength,
 
   return true;
 }
+
+template bool CharacterDataBuffer::SetTo<char16_t>(const char16_t* aBuffer,
+                                                   uint32_t aLength,
+                                                   bool aUpdateBidi,
+                                                   bool aForce2b);
+
+template bool CharacterDataBuffer::SetTo<char>(const char* aBuffer,
+                                               uint32_t aLength,
+                                               bool aUpdateBidi, bool aForce2b);
 
 void CharacterDataBuffer::CopyTo(char16_t* aDest, uint32_t aOffset,
                                  uint32_t aCount) {

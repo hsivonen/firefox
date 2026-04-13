@@ -19,59 +19,63 @@ struct nsHtml5FastestPolicyALU {
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static void completedNamedCharacterReference(
       nsHtml5Highlighter* aHighlighter) {}
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static int32_t accelerateAdvancementData(
-      nsHtml5Tokenizer* aTokenizer, char16_t* buf, int32_t pos,
-      int32_t endPos) {
+      nsHtml5Tokenizer* aTokenizer, Char* buf, int32_t pos, int32_t endPos) {
     return 0;
   }
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static int32_t accelerateAdvancementRawtext(
-      nsHtml5Tokenizer* aTokenizer, char16_t* buf, int32_t pos,
-      int32_t endPos) {
+      nsHtml5Tokenizer* aTokenizer, Char* buf, int32_t pos, int32_t endPos) {
     return 0;
   }
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static int32_t
   accelerateAdvancementScriptDataEscaped(nsHtml5Tokenizer* aTokenizer,
-                                         char16_t* buf, int32_t pos,
+                                         Char* buf, int32_t pos,
                                          int32_t endPos) {
     return 0;
   }
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static int32_t accelerateAdvancementComment(
-      nsHtml5Tokenizer* aTokenizer, char16_t* buf, int32_t pos,
-      int32_t endPos) {
+      nsHtml5Tokenizer* aTokenizer, Char* buf, int32_t pos, int32_t endPos) {
     return 0;
   }
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static int32_t
   accelerateAdvancementAttributeValueSingleQuoted(nsHtml5Tokenizer* aTokenizer,
-                                                  char16_t* buf, int32_t pos,
+                                                  Char* buf, int32_t pos,
                                                   int32_t endPos) {
     return 0;
   }
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static int32_t
   accelerateAdvancementAttributeValueDoubleQuoted(nsHtml5Tokenizer* aTokenizer,
-                                                  char16_t* buf, int32_t pos,
+                                                  Char* buf, int32_t pos,
                                                   int32_t endPos) {
     return 0;
   }
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static int32_t accelerateAdvancementCdataSection(
-      nsHtml5Tokenizer* aTokenizer, char16_t* buf, int32_t pos,
-      int32_t endPos) {
+      nsHtml5Tokenizer* aTokenizer, Char* buf, int32_t pos, int32_t endPos) {
     return 0;
   }
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static int32_t accelerateAdvancementPlaintext(
-      nsHtml5Tokenizer* aTokenizer, char16_t* buf, int32_t pos,
-      int32_t endPos) {
+      nsHtml5Tokenizer* aTokenizer, Char* buf, int32_t pos, int32_t endPos) {
     return 0;
   }
 
+  template <typename Char>
   MOZ_ALWAYS_INLINE_EVEN_DEBUG static char16_t checkChar(
-      nsHtml5Tokenizer* aTokenizer, char16_t* buf, int32_t pos) {
+      nsHtml5Tokenizer* aTokenizer, Char* buf, int32_t pos) {
     return buf[pos];
   }
 
