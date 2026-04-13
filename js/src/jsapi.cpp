@@ -3679,6 +3679,25 @@ JS_EncodeStringToUTF8BufferPartial(JSContext* cx, JSString* str,
   return str->encodeUTF8Partial(nogc, buffer);
 }
 
+JS_PUBLIC_API bool JS_WalkRope(JSContext* cx, JS::Handle<JSString*> str,
+                               void* context,
+                               JS_WalkRopeMayGCUTF16Func* utf16func,
+                               JS_WalkRopeMayGCLatin1Func* latin1func) {
+  AssertHeapIsIdle();
+  CHECK_THREAD(cx);
+  return str->walkRope(cx, context, utf16func, latin1func);
+}
+
+JS_PUBLIC_API bool JS_WalkRopeUnsafe(
+    JSContext* cx, JSString* str, void* context,
+    JS_UnsafeWalkRopeMustNotGCUTF16Func* utf16func,
+    JS_UnsafeWalkRopeMustNotGCLatin1Func* latin1func) {
+  AssertHeapIsIdle();
+  CHECK_THREAD(cx);
+  JS::AutoCheckCannotGC nogc;
+  return str->walkRopeUnsafe(nogc, context, utf16func, latin1func);
+}
+
 JS_PUBLIC_API JS::Symbol* JS::NewSymbol(JSContext* cx,
                                         HandleString description) {
   AssertHeapIsIdle();

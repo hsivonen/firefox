@@ -909,25 +909,33 @@ void nsHtml5TreeBuilder::appendChildrenToNewParent(
 }
 
 void nsHtml5TreeBuilder::insertFosterParentedCharacters(
-    char16_t* aBuffer, int32_t aStart, int32_t aLength,
     nsIContentHandle* aTable, nsIContentHandle* aStackParent) {
-  MOZ_ASSERT(aBuffer, "Null buffer");
   MOZ_ASSERT(aTable, "Null table");
   MOZ_ASSERT(aStackParent, "Null stack parent");
-  MOZ_ASSERT(!aStart, "aStart must always be zero.");
+  MOZ_ASSERT(charBufferLen > 0 || latin1BufferLen > 0);
 
   if (mBuilder) {
-    nsresult rv = nsHtml5TreeOperation::FosterParentText(
-        static_cast<nsIContent*>(aStackParent),
-        aBuffer,  // XXX aStart always ignored???
-        aLength, static_cast<nsIContent*>(aTable), mBuilder);
+    nsresult rv;
+    if (latin1BufferLen) {
+      MOZ_ASSERT(!charBufferLen);
+      rv = nsHtml5TreeOperation::FosterParentText(
+          static_cast<nsIContent*>(aStackParent), latin1Buffer.get(),
+          latin1BufferLen, static_cast<nsIContent*>(aTable), mBuilder);
+    } else {
+      MOZ_ASSERT(!latin1BufferLen);
+      rv = nsHtml5TreeOperation::FosterParentText(
+          static_cast<nsIContent*>(aStackParent), charBuffer.get(),
+          charBufferLen, static_cast<nsIContent*>(aTable), mBuilder);
+    }
     if (NS_FAILED(rv)) {
       MarkAsBrokenAndRequestSuspensionWithBuilder(rv);
     }
     return;
   }
 
-  auto bufferCopy = mozilla::MakeUniqueFallible<char16_t[]>(aLength);
+  MOZ_ASSERT(!latin1BufferLen);
+
+  auto bufferCopy = mozilla::MakeUniqueFallible<char16_t[]>(charBufferLen);
   if (!bufferCopy) {
     // Just assigning mBroken instead of generating tree op. The caller
     // of tokenizeBuffer() will call MarkAsBroken() as appropriate.
@@ -936,7 +944,7 @@ void nsHtml5TreeBuilder::insertFosterParentedCharacters(
     return;
   }
 
-  memcpy(bufferCopy.get(), aBuffer, aLength * sizeof(char16_t));
+  memcpy(bufferCopy.get(), charBuffer.get(), charBufferLen * sizeof(char16_t));
 
   nsHtml5TreeOperation* treeOp = mOpQueue.AppendElement(mozilla::fallible);
   if (MOZ_UNLIKELY(!treeOp)) {
@@ -944,7 +952,7 @@ void nsHtml5TreeBuilder::insertFosterParentedCharacters(
     return;
   }
   opFosterParentText operation(aStackParent, bufferCopy.release(), aTable,
-                               aLength);
+                               charBufferLen);
   treeOp->Init(mozilla::AsVariant(operation));
 }
 
@@ -975,24 +983,30 @@ void nsHtml5TreeBuilder::insertFosterParentedChild(
   treeOp->Init(mozilla::AsVariant(operation));
 }
 
-void nsHtml5TreeBuilder::appendCharacters(nsIContentHandle* aParent,
-                                          char16_t* aBuffer, int32_t aStart,
-                                          int32_t aLength) {
-  MOZ_ASSERT(aBuffer, "Null buffer");
+void nsHtml5TreeBuilder::appendCharacters(nsIContentHandle* aParent) {
   MOZ_ASSERT(aParent, "Null parent");
-  MOZ_ASSERT(!aStart, "aStart must always be zero.");
+  MOZ_ASSERT(charBufferLen > 0 || latin1BufferLen > 0);
 
   if (mBuilder) {
-    nsresult rv = nsHtml5TreeOperation::AppendText(
-        aBuffer,  // XXX aStart always ignored???
-        aLength, static_cast<nsIContent*>(aParent), mBuilder);
+    nsresult rv;
+    if (latin1BufferLen) {
+      rv = nsHtml5TreeOperation::AppendText(latin1Buffer.get(), latin1BufferLen,
+                                            static_cast<nsIContent*>(aParent),
+                                            mBuilder);
+    } else {
+      rv = nsHtml5TreeOperation::AppendText(charBuffer.get(), charBufferLen,
+                                            static_cast<nsIContent*>(aParent),
+                                            mBuilder);
+    }
     if (NS_FAILED(rv)) {
       MarkAsBrokenAndRequestSuspensionWithBuilder(rv);
     }
     return;
   }
 
-  auto bufferCopy = mozilla::MakeUniqueFallible<char16_t[]>(aLength);
+  MOZ_ASSERT(!latin1BufferLen);
+
+  auto bufferCopy = mozilla::MakeUniqueFallible<char16_t[]>(charBufferLen);
   if (!bufferCopy) {
     // Just assigning mBroken instead of generating tree op. The caller
     // of tokenizeBuffer() will call MarkAsBroken() as appropriate.
@@ -1001,11 +1015,11 @@ void nsHtml5TreeBuilder::appendCharacters(nsIContentHandle* aParent,
     return;
   }
 
-  memcpy(bufferCopy.get(), aBuffer, aLength * sizeof(char16_t));
+  memcpy(bufferCopy.get(), charBuffer.get(), charBufferLen * sizeof(char16_t));
 
   if (mImportScanner.ShouldScan()) {
     nsTArray<nsString> imports =
-        mImportScanner.Scan(mozilla::Span(aBuffer, aLength));
+        mImportScanner.Scan(mozilla::Span(charBuffer.get(), charBufferLen));
     for (nsString& url : imports) {
       mSpeculativeLoadQueue.AppendElement()->InitImportStyle(std::move(url));
     }
@@ -1016,7 +1030,7 @@ void nsHtml5TreeBuilder::appendCharacters(nsIContentHandle* aParent,
     MarkAsBrokenAndRequestSuspensionWithoutBuilder(NS_ERROR_OUT_OF_MEMORY);
     return;
   }
-  opAppendText operation(aParent, bufferCopy.release(), aLength);
+  opAppendText operation(aParent, bufferCopy.release(), charBufferLen);
   treeOp->Init(mozilla::AsVariant(operation));
 }
 
@@ -1386,12 +1400,77 @@ void nsHtml5TreeBuilder::elementPopped(int32_t aNamespace, nsAtom* aName,
   }
 }
 
+void nsHtml5TreeBuilder::characters(const char16_t* buf, int32_t start,
+                                    int32_t length) {
+  if (tokenizer->isViewingXmlSource()) {
+    return;
+  }
+  charactersImpl(buf, start, length);
+}
+
+void nsHtml5TreeBuilder::characters(const unsigned char* buf, int32_t start,
+                                    int32_t length) {
+  MOZ_ASSERT(!tokenizer->isViewingXmlSource());
+  charactersImpl(buf, start, length);
+}
+
+static inline bool IsLatin1(const char16_t* buf, int32_t start,
+                            int32_t length) {
+  buf = buf + start;
+  for (int32_t i = 0; i < length; ++i) {
+    if (buf[i] > 0xFF) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void nsHtml5TreeBuilder::charactersMaybeNarrow(const char16_t* buf,
+                                               int32_t start, int32_t length) {
+  // `length` is almost always so short that it doesn't make sense to use SIMD.
+  const int32_t INTERMEDIATE_LEN = 32;
+  if (mBuilder && !charBufferLen && length < INTERMEDIATE_LEN &&
+      IsLatin1(buf, start, length)) {
+    unsigned char intermediate[INTERMEDIATE_LEN];  // length from charRefBuf
+    nsHtml5ArrayCopy::arraycopy(buf, start, intermediate, 0, length);
+    characters(intermediate, 0, length);
+    return;
+  }
+  characters(buf, start, length);
+}
+
 void nsHtml5TreeBuilder::accumulateCharacters(const char16_t* aBuf,
                                               int32_t aStart, int32_t aLength) {
-  MOZ_RELEASE_ASSERT(charBufferLen + aLength <= charBuffer.length,
-                     "About to memcpy past the end of the buffer!");
-  memcpy(charBuffer + charBufferLen, aBuf + aStart, sizeof(char16_t) * aLength);
+  MOZ_RELEASE_ASSERT(
+      latin1BufferLen + charBufferLen + aLength <= charBuffer.length,
+      "About to memcpy past the end of the buffer!");
+  if (latin1BufferLen) {
+    MOZ_ASSERT(mBuilder);
+    MOZ_ASSERT(!charBufferLen);
+    nsHtml5ArrayCopy::arraycopy(latin1Buffer, 0, charBuffer, 0,
+                                latin1BufferLen);
+    charBufferLen = latin1BufferLen;
+    latin1BufferLen = 0;
+  }
+  nsHtml5ArrayCopy::arraycopy(aBuf, aStart, charBuffer, charBufferLen, aLength);
   charBufferLen += aLength;
+}
+
+void nsHtml5TreeBuilder::accumulateCharacters(const unsigned char* aBuf,
+                                              int32_t aStart, int32_t aLength) {
+  if (charBufferLen || !mBuilder) {
+    MOZ_ASSERT(!latin1BufferLen);
+    nsHtml5ArrayCopy::arraycopy(aBuf, aStart, charBuffer, charBufferLen,
+                                aLength);
+    charBufferLen += aLength;
+    return;
+  }
+  MOZ_ASSERT(mBuilder);
+  MOZ_RELEASE_ASSERT(latin1BufferLen + aLength <= latin1Buffer.length,
+                     "About to memcpy past the end of the buffer!");
+  nsHtml5ArrayCopy::arraycopy(aBuf, aStart, latin1Buffer, latin1BufferLen,
+                              aLength);
+  latin1BufferLen += aLength;
 }
 
 // INT32_MAX is (2^31)-1. Therefore, the highest power-of-two that fits
@@ -1404,13 +1483,41 @@ void nsHtml5TreeBuilder::accumulateCharacters(const char16_t* aBuf,
 bool nsHtml5TreeBuilder::EnsureBufferSpace(int32_t aLength) {
   // TODO: Unify nsHtml5Tokenizer::strBuf and nsHtml5TreeBuilder::charBuffer
   // so that this method becomes unnecessary.
-  mozilla::CheckedInt<int32_t> worstCase(charBufferLen);
+  mozilla::CheckedInt<int32_t> worstCase;
+  if (latin1BufferLen > charBufferLen) {
+    worstCase = latin1BufferLen;
+  } else {
+    worstCase = charBufferLen;
+  }
   worstCase += aLength;
   if (!worstCase.isValid()) {
     return false;
   }
   if (worstCase.value() > MAX_POWER_OF_TWO_IN_INT32) {
     return false;
+  }
+  if (mBuilder) {
+    if (!latin1Buffer) {
+      if (worstCase.value() < MAX_POWER_OF_TWO_IN_INT32) {
+        // Add one to round to the next power of two to avoid immediate
+        // reallocation once there are a few characters in the buffer.
+        worstCase += 1;
+      }
+      latin1Buffer = jArray<unsigned char, int32_t>::newFallibleJArray(
+          mozilla::RoundUpPow2(worstCase.value()));
+      if (!latin1Buffer) {
+        return false;
+      }
+    } else if (worstCase.value() > latin1Buffer.length) {
+      jArray<unsigned char, int32_t> newBuf =
+          jArray<unsigned char, int32_t>::newFallibleJArray(
+              mozilla::RoundUpPow2(worstCase.value()));
+      if (!newBuf) {
+        return false;
+      }
+      memcpy(newBuf, latin1Buffer, size_t(latin1BufferLen));
+      latin1Buffer = newBuf;
+    }
   }
   if (!charBuffer) {
     if (worstCase.value() < MAX_POWER_OF_TWO_IN_INT32) {

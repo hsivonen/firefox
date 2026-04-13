@@ -120,7 +120,8 @@ class CharacterDataBuffer final {
    * you can access the value faster but may waste memory if all characters
    * are less than U+0100.
    */
-  bool SetTo(const char16_t* aBuffer, uint32_t aLength, bool aUpdateBidi,
+  template <typename Char>
+  bool SetTo(const Char* aBuffer, uint32_t aLength, bool aUpdateBidi,
              bool aForce2b);
 
   bool SetTo(const nsString& aString, bool aUpdateBidi, bool aForce2b) {
@@ -138,7 +139,8 @@ class CharacterDataBuffer final {
       }
     }
 
-    return SetTo(aString.get(), aString.Length(), aUpdateBidi, aForce2b);
+    return SetTo<char16_t>(aString.get(), aString.Length(), aUpdateBidi,
+                           aForce2b);
   }
 
   /**
@@ -151,6 +153,12 @@ class CharacterDataBuffer final {
    */
   bool Append(const char16_t* aBuffer, uint32_t aLength, bool aUpdateBidi,
               bool aForce2b);
+
+  bool Append(const char* aBuffer, uint32_t aLength, bool aUpdateBidi,
+              bool aForce2b) {
+    MOZ_ASSERT(false);
+    return false;
+  }
 
   /**
    * Append the contents of this data buffer to aString
@@ -558,6 +566,8 @@ class CharacterDataBuffer final {
    * includes any Bidi characters.
    */
   void UpdateBidiFlag(const char16_t* aBuffer, uint32_t aLength);
+
+  void UpdateBidiFlag(const char* aBuffer, uint32_t aLength) {};
 
   union {
     mozilla::StringBuffer* m2b;

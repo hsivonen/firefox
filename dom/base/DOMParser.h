@@ -35,16 +35,18 @@ class DOMParser final : public nsISupports, public nsWrapperCache {
   static already_AddRefed<DOMParser> Constructor(const GlobalObject& aOwner,
                                                  mozilla::ErrorResult& rv);
 
-  already_AddRefed<Document> ParseFromStringInternal(const nsAString& aStr,
+  already_AddRefed<Document> ParseFromStringInternal(JSContext* aCx,
+                                                     JS::Handle<JSString*> aStr,
                                                      SupportedType aType,
                                                      ErrorResult& aRv);
 
   MOZ_CAN_RUN_SCRIPT already_AddRefed<Document> ParseFromString(
-      const TrustedHTMLOrString& aStr, SupportedType aType,
+      JSContext* aCx, JS::Handle<JSString*> aStr, SupportedType aType,
       nsIPrincipal* aSubjectPrincipal, ErrorResult& aRv);
 
   // Chrome and UI Widgets API
-  already_AddRefed<Document> ParseFromSafeString(const nsAString& aStr,
+  already_AddRefed<Document> ParseFromSafeString(JSContext* aCx,
+                                                 JS::Handle<JSString*> aStr,
                                                  SupportedType aType,
                                                  ErrorResult& aRv);
   // Sequence converts to Span, so we can use this overload for both

@@ -33,7 +33,6 @@ void nsHtml5Module::InitializeStatics() {
   nsHtml5StackNode::initializeStatics();
   nsHtml5Tokenizer::initializeStatics();
   nsHtml5TreeBuilder::initializeStatics();
-  nsHtml5UTF16Buffer::initializeStatics();
   nsHtml5TreeOpExecutor::InitializeStatics();
 
   NS_NewNamedThread("HTML5 Parser", &sStreamParserThread);
@@ -58,7 +57,6 @@ void nsHtml5Module::ReleaseStatics() {
   nsHtml5StackNode::releaseStatics();
   nsHtml5Tokenizer::releaseStatics();
   nsHtml5TreeBuilder::releaseStatics();
-  nsHtml5UTF16Buffer::releaseStatics();
   NS_IF_RELEASE(sStreamParserThread);
 }
 

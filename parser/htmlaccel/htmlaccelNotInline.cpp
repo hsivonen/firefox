@@ -16,6 +16,11 @@ MOZ_NEVER_INLINE bool ContainsMarkup(const char16_t* aPtr,
   return detail::ContainsMarkup(aPtr, aEnd);
 }
 
+MOZ_NEVER_INLINE bool ContainsMarkup(const unsigned char* aPtr,
+                                     const unsigned char* aEnd) {
+  return detail::ContainsMarkup(aPtr, aEnd);
+}
+
 // HTML Serializer functions
 
 /// Skip over SIMD strides not containing less-than, greater-than, ampersand,
@@ -29,7 +34,10 @@ MOZ_NEVER_INLINE size_t SkipNonEscapedInTextNode(const char16_t* aPtr,
 /// and no-break space.
 MOZ_NEVER_INLINE size_t SkipNonEscapedInTextNode(const char* aPtr,
                                                  const char* aEnd) {
-  return detail::AccelerateTextNode(aPtr, aEnd, detail::LT_GT_AMP_NBSP, true);
+  return detail::AccelerateTextNode(
+      reinterpret_cast<const unsigned char*>(aPtr),
+      reinterpret_cast<const unsigned char*>(aEnd), detail::LT_GT_AMP_NBSP,
+      true);
 }
 
 /// Skip over SIMD strides not containing less-than, greater-than, ampersand,
@@ -49,7 +57,9 @@ MOZ_NEVER_INLINE uint32_t CountEscapedInTextNode(const char16_t* aPtr,
 /// Count occurrences of less-than, greater-than, ampersand, and no-break space.
 MOZ_NEVER_INLINE uint32_t CountEscapedInTextNode(const char* aPtr,
                                                  const char* aEnd) {
-  return detail::CountEscaped(aPtr, aEnd, false);
+  return detail::CountEscaped(reinterpret_cast<const unsigned char*>(aPtr),
+                              reinterpret_cast<const unsigned char*>(aEnd),
+                              false);
 }
 
 /// Count occurrences of less-than, greater-than, ampersand, no-break space, and
@@ -83,6 +93,12 @@ MOZ_NEVER_INLINE uint32_t CountEscapedInAttributeValue(const char16_t* aPtr,
 // be covered byt the lookup table that's used for other characters
 // of interest, since the lookup table already needs to contain CR.
 
+/// The innerHTML / DOMParser case for the data state in the HTML parser; Latin1
+MOZ_NEVER_INLINE int32_t AccelerateDataFastest(const unsigned char* aPtr,
+                                               const unsigned char* aEnd) {
+  return detail::AccelerateTextNode(aPtr, aEnd, detail::ZERO_LT_AMP_CR, true);
+}
+
 /// The innerHTML / DOMParser case for the data state in the HTML parser
 MOZ_NEVER_INLINE int32_t AccelerateDataFastest(const char16_t* aPtr,
                                                const char16_t* aEnd) {
@@ -103,6 +119,13 @@ MOZ_NEVER_INLINE int32_t AccelerateDataLineCol(const char16_t* aPtr,
                                     false);
 }
 
+/// The innerHTML / DOMParser case for the RAWTEXT state in the HTML parser;
+/// Latin1
+MOZ_NEVER_INLINE int32_t AccelerateRawtextFastest(const unsigned char* aPtr,
+                                                  const unsigned char* aEnd) {
+  return detail::AccelerateTextNode(aPtr, aEnd, detail::ZERO_LT_CR, true);
+}
+
 /// The innerHTML / DOMParser case for the RAWTEXT state in the HTML parser
 MOZ_NEVER_INLINE int32_t AccelerateRawtextFastest(const char16_t* aPtr,
                                                   const char16_t* aEnd) {
@@ -119,6 +142,14 @@ MOZ_NEVER_INLINE int32_t AccelerateRawtextViewSource(const char16_t* aPtr,
 MOZ_NEVER_INLINE int32_t AccelerateRawtextLineCol(const char16_t* aPtr,
                                                   const char16_t* aEnd) {
   return detail::AccelerateTextNode(aPtr, aEnd, detail::ZERO_LT_CR_LF, false);
+}
+
+/// The innerHTML / DOMParser case for the comment state in the HTML parser;
+/// Latin1
+MOZ_NEVER_INLINE int32_t AccelerateCommentFastest(const unsigned char* aPtr,
+                                                  const unsigned char* aEnd) {
+  return detail::AccelerateTextNode(aPtr, aEnd, detail::ZERO_LT_CR, true,
+                                    false);
 }
 
 /// The innerHTML / DOMParser case for the comment state in the HTML parser
@@ -140,6 +171,13 @@ MOZ_NEVER_INLINE int32_t AccelerateCommentLineCol(const char16_t* aPtr,
                                                   const char16_t* aEnd) {
   return detail::AccelerateTextNode(aPtr, aEnd, detail::ZERO_LT_CR_LF, false,
                                     false);
+}
+
+/// The innerHTML / DOMParser case for the attribute value single-quoted state
+/// in the HTML parser; Latin1
+MOZ_NEVER_INLINE int32_t AccelerateAttributeValueSingleQuotedFastest(
+    const unsigned char* aPtr, const unsigned char* aEnd) {
+  return detail::AccelerateTextNode(aPtr, aEnd, detail::ZERO_APOS_AMP_CR, true);
 }
 
 /// The innerHTML / DOMParser case for the attribute value single-quoted state
@@ -166,6 +204,13 @@ MOZ_NEVER_INLINE int32_t AccelerateAttributeValueSingleQuotedLineCol(
 }
 
 /// The innerHTML / DOMParser case for the attribute value double-quoted state
+/// in the HTML parser; Latin1
+MOZ_NEVER_INLINE int32_t AccelerateAttributeValueDoubleQuotedFastest(
+    const unsigned char* aPtr, const unsigned char* aEnd) {
+  return detail::AccelerateTextNode(aPtr, aEnd, detail::ZERO_QUOT_AMP_CR, true);
+}
+
+/// The innerHTML / DOMParser case for the attribute value double-quoted state
 /// in the HTML parser
 MOZ_NEVER_INLINE int32_t AccelerateAttributeValueDoubleQuotedFastest(
     const char16_t* aPtr, const char16_t* aEnd) {
@@ -189,6 +234,14 @@ MOZ_NEVER_INLINE int32_t AccelerateAttributeValueDoubleQuotedLineCol(
 }
 
 /// The innerHTML / DOMParser case for the CDATA section state in the HTML
+/// parser; Latin1
+MOZ_NEVER_INLINE int32_t AccelerateCdataSectionFastest(
+    const unsigned char* aPtr, const unsigned char* aEnd) {
+  return detail::AccelerateTextNode(aPtr, aEnd, detail::ZERO_CR, true, true,
+                                    false);
+}
+
+/// The innerHTML / DOMParser case for the CDATA section state in the HTML
 /// parser
 MOZ_NEVER_INLINE int32_t AccelerateCdataSectionFastest(const char16_t* aPtr,
                                                        const char16_t* aEnd) {
@@ -208,6 +261,13 @@ MOZ_NEVER_INLINE int32_t AccelerateCdataSectionLineCol(const char16_t* aPtr,
                                                        const char16_t* aEnd) {
   return detail::AccelerateTextNode(aPtr, aEnd, detail::ZERO_CR_LF, false, true,
                                     false);
+}
+
+/// The innerHTML / DOMParser case for the plaintext state in the HTML parser;
+/// Latin1
+MOZ_NEVER_INLINE int32_t AcceleratePlaintextFastest(const unsigned char* aPtr,
+                                                    const unsigned char* aEnd) {
+  return detail::AccelerateTextNode(aPtr, aEnd, detail::ZERO_CR, true);
 }
 
 /// The innerHTML / DOMParser case for the plaintext state in the HTML parser

@@ -40,6 +40,7 @@
 #include "mozilla/dom/CacheExpirationTime.h"
 #include "mozilla/dom/FetchPriority.h"
 #include "mozilla/dom/FromParser.h"
+#include "mozilla/dom/nsAStringOrJSString.h"
 #include "mozilla/fallible.h"
 #include "mozilla/gfx/Point.h"
 #include "nsCOMPtr.h"
@@ -1990,9 +1991,9 @@ class nsContentUtils {
    *         long and NS_OK otherwise.
    */
   static nsresult ParseFragmentHTML(
-      const nsAString& aSourceBuffer, nsIContent* aTargetNode,
-      nsAtom* aContextLocalName, int32_t aContextNamespace, bool aQuirks,
-      bool aPreventScriptExecution,
+      const mozilla::dom::nsAStringOrJSString aSourceBuffer,
+      nsIContent* aTargetNode, nsAtom* aContextLocalName,
+      int32_t aContextNamespace, bool aQuirks, bool aPreventScriptExecution,
       int32_t aFlags = kParseFragmentPrivilegedDefaultSanitization);
 
   /**
@@ -2035,9 +2036,9 @@ class nsContentUtils {
    *         fragments is made, NS_ERROR_OUT_OF_MEMORY if aSourceBuffer is too
    *         long and NS_OK otherwise.
    */
-  static nsresult ParseDocumentHTML(const nsAString& aSourceBuffer,
-                                    Document* aTargetDocument,
-                                    bool aScriptingEnabledForNoscriptParsing);
+  static nsresult ParseDocumentHTML(
+      const mozilla::dom::nsAStringOrJSString aSourceBuffer,
+      Document* aTargetDocument, bool aScriptingEnabledForNoscriptParsing);
 
   /**
    * Converts HTML source to plain text by parsing the source and using the

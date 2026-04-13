@@ -126,6 +126,13 @@ class CharacterData : public nsIContent {
    * Set the text to the given value. If aNotify is true then
    * the document is notified of the content change.
    */
+  nsresult SetText(const unsigned char* aBuffer, uint32_t aLength,
+                   bool aNotify);
+
+  /**
+   * Set the text to the given value. If aNotify is true then
+   * the document is notified of the content change.
+   */
   nsresult SetText(const char16_t* aBuffer, uint32_t aLength, bool aNotify);
   /**
    * Append the given value to the current text. If aNotify is true then
@@ -133,6 +140,16 @@ class CharacterData : public nsIContent {
    */
   nsresult SetText(const nsAString& aStr, bool aNotify) {
     return SetText(aStr.BeginReading(), aStr.Length(), aNotify);
+  }
+
+  /**
+   * Append the given value to the current text. If aNotify is true then
+   * the document is notified of the content change.
+   */
+  nsresult AppendText(const unsigned char* aBuffer, uint32_t aLength,
+                      bool aNotify) {
+    // TODO
+    return NS_OK;
   }
 
   /**
@@ -249,6 +266,27 @@ class CharacterData : public nsIContent {
   nsresult SetTextInternal(
       uint32_t aOffset, uint32_t aCount, const char16_t* aBuffer,
       uint32_t aLength, bool aNotify,
+      MutationEffectOnScript aMutationEffectOnScript =
+          MutationEffectOnScript::DropTrustWorthiness,
+      CharacterDataChangeInfo::Details* aDetails = nullptr) {
+    return SetTextInternalImpl(aOffset, aCount, aBuffer, aLength, aNotify,
+                               aMutationEffectOnScript, aDetails);
+  }
+
+  nsresult SetTextInternal(
+      uint32_t aOffset, uint32_t aCount, const char* aBuffer, uint32_t aLength,
+      bool aNotify,
+      MutationEffectOnScript aMutationEffectOnScript =
+          MutationEffectOnScript::DropTrustWorthiness,
+      CharacterDataChangeInfo::Details* aDetails = nullptr) {
+    return SetTextInternalImpl(aOffset, aCount, aBuffer, aLength, aNotify,
+                               aMutationEffectOnScript, aDetails);
+  }
+
+  template <typename Char>
+  nsresult SetTextInternalImpl(
+      uint32_t aOffset, uint32_t aCount, const Char* aBuffer, uint32_t aLength,
+      bool aNotify,
       MutationEffectOnScript aMutationEffectOnScript =
           MutationEffectOnScript::DropTrustWorthiness,
       CharacterDataChangeInfo::Details* aDetails = nullptr);

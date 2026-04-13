@@ -191,8 +191,9 @@ void CharacterData::InsertDataInternal(
 void CharacterData::DeleteDataInternal(
     uint32_t aOffset, uint32_t aCount,
     MutationEffectOnScript aMutationEffectOnScript, ErrorResult& aRv) {
-  nsresult rv = SetTextInternal(aOffset, aCount, nullptr, 0, true,
-                                aMutationEffectOnScript);
+  const char16_t* none = nullptr;
+  nsresult rv =
+      SetTextInternal(aOffset, aCount, none, 0, true, aMutationEffectOnScript);
   if (NS_FAILED(rv)) {
     aRv.Throw(rv);
   }
@@ -208,10 +209,20 @@ void CharacterData::ReplaceDataInternal(
   }
 }
 
-nsresult CharacterData::SetTextInternal(
-    uint32_t aOffset, uint32_t aCount, const char16_t* aBuffer,
-    uint32_t aLength, bool aNotify,
-    MutationEffectOnScript aMutationEffectOnScript,
+static inline void AppendBufferToString(const char16_t* aBuffer,
+                                        uint32_t aLength, nsString& aDst) {
+  aDst.Append(aBuffer, aLength);
+}
+
+static inline void AppendBufferToString(const char* aBuffer, uint32_t aLength,
+                                        nsString& aDst) {
+  MOZ_ASSERT(false);
+}
+
+template <typename Char>
+nsresult CharacterData::SetTextInternalImpl(
+    uint32_t aOffset, uint32_t aCount, const Char* aBuffer, uint32_t aLength,
+    bool aNotify, MutationEffectOnScript aMutationEffectOnScript,
     CharacterDataChangeInfo::Details* aDetails) {
   MOZ_ASSERT(aBuffer || !aLength, "Null buffer passed to SetTextInternal!");
 
@@ -253,6 +264,9 @@ nsresult CharacterData::SetTextInternal(
     bool ok = mBuffer.SetTo(aBuffer, aLength, true,
                             HasFlag(NS_MAYBE_MODIFIED_FREQUENTLY));
     NS_ENSURE_TRUE(ok, NS_ERROR_OUT_OF_MEMORY);
+  } else if (sizeof(Char) == 1) {
+    MOZ_ASSERT(false);
+    return nsresult::NS_ERROR_NOT_IMPLEMENTED;
   } else if (aOffset == textLength) {
     // Appending to existing.
     bool ok = mBuffer.Append(aBuffer, aLength, !mBuffer.IsBidi(),
@@ -275,7 +289,7 @@ nsresult CharacterData::SetTextInternal(
       mBuffer.AppendTo(to, 0, aOffset);
     }
     if (aLength) {
-      to.Append(aBuffer, aLength);
+      AppendBufferToString(aBuffer, aLength, to);
       if (!bidi) {
         bidi = HasRTLChars(Span(aBuffer, aLength));
       }
@@ -319,6 +333,17 @@ nsresult CharacterData::SetTextInternal(
 
   return NS_OK;
 }
+
+template nsresult CharacterData::SetTextInternalImpl<char16_t>(
+    uint32_t aOffset, uint32_t aCount, const char16_t* aBuffer,
+    uint32_t aLength, bool aNotify,
+    MutationEffectOnScript aMutationEffectOnScript,
+    CharacterDataChangeInfo::Details* aDetails);
+
+template nsresult CharacterData::SetTextInternalImpl<char>(
+    uint32_t aOffset, uint32_t aCount, const char* aBuffer, uint32_t aLength,
+    bool aNotify, MutationEffectOnScript aMutationEffectOnScript,
+    CharacterDataChangeInfo::Details* aDetails);
 
 //----------------------------------------------------------------------
 
@@ -475,6 +500,13 @@ nsresult CharacterData::SetText(const char16_t* aBuffer, uint32_t aLength,
                                 bool aNotify) {
   return SetTextInternal(0, mBuffer.GetLength(), aBuffer, aLength, aNotify,
                          MutationEffectOnScript::KeepTrustWorthiness);
+}
+
+nsresult CharacterData::SetText(const unsigned char* aBuffer, uint32_t aLength,
+                                bool aNotify) {
+  return SetTextInternal(0, mBuffer.GetLength(),
+                         reinterpret_cast<const char*>(aBuffer), aLength,
+                         aNotify, MutationEffectOnScript::KeepTrustWorthiness);
 }
 
 nsresult CharacterData::AppendText(const char16_t* aBuffer, uint32_t aLength,

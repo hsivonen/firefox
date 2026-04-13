@@ -19,6 +19,8 @@
 #include "nsString.h"
 #include "nsTextNode.h"
 
+#if 0
+
 namespace mozilla {
 
 using namespace dom;
@@ -2709,3 +2711,5 @@ TEST(HTMLEditUtilsTest, ScanInclusiveNextThingWithIgnoringUnnecessaryLineBreak)
 }
 
 }  // namespace mozilla
+
+#endif

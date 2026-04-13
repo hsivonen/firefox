@@ -144,12 +144,14 @@ void HTMLScriptElement::GetInnerHTML(nsAString& aInnerHTML,
   }
 }
 
-void HTMLScriptElement::SetInnerHTMLTrusted(const nsAString& aInnerHTML,
-                                            nsIPrincipal* aSubjectPrincipal,
-                                            ErrorResult& aError) {
+void HTMLScriptElement::SetInnerHTMLTrusted(
+    const nsAStringOrJSString aInnerHTML, nsIPrincipal* aSubjectPrincipal,
+    ErrorResult& aError) {
   // aInnerHTML is trusted HTML, but not trusted script so we must not preserve
   // trustworthiness.
-  aError = nsContentUtils::SetNodeTextContent(this, aInnerHTML, true);
+  nsAutoString str;
+  aInnerHTML.AssignTo(str);
+  aError = nsContentUtils::SetNodeTextContent(this, str, true);
 }
 
 void HTMLScriptElement::GetText(nsAString& aValue, ErrorResult& aRv) const {

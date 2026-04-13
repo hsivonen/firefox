@@ -16,6 +16,7 @@
 #include "mozilla/MemoryReporting.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/dom/RadioGroupContainer.h"
+#include "mozilla/dom/nsAStringOrJSString.h"
 #include "nsAtomHashKeys.h"
 #include "nsCycleCollectionParticipant.h"  // NS_DECL_CYCLE_*
 #include "nsIContent.h"                    // base class
@@ -410,7 +411,8 @@ class FragmentOrElement : public nsIContent {
 
  protected:
   void GetMarkup(bool aIncludeSelf, nsAString& aMarkup);
-  void SetInnerHTMLInternal(const nsAString& aInnerHTML, ErrorResult& aError);
+  void SetInnerHTMLInternal(const nsAStringOrJSString aInnerHTML,
+                            ErrorResult& aError);
 
   // Override from nsINode
   nsIContent::nsContentSlots* CreateSlots() override;

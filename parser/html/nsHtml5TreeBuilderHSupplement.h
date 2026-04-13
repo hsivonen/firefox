@@ -96,7 +96,8 @@ nsIContentHandle* getFormPointerForContext(nsIContentHandle* aContext);
  */
 nsIContentHandle* AllocateContentHandle();
 
-void accumulateCharactersForced(const char16_t* aBuf, int32_t aStart,
+template <typename Char>
+void accumulateCharactersForced(const Char* aBuf, int32_t aStart,
                                 int32_t aLength) {
   accumulateCharacters(aBuf, aStart, aLength);
 }
@@ -120,6 +121,12 @@ nsHtml5TreeBuilder(nsAHtml5TreeOpSink* aOpSink, nsHtml5TreeOpStage* aStage,
                    bool aGenerateSpeculativeLoads);
 
 ~nsHtml5TreeBuilder();
+
+void characters(const char16_t* buf, int32_t start, int32_t length);
+
+void characters(const unsigned char* buf, int32_t start, int32_t length);
+
+void charactersMaybeNarrow(const char16_t* buf, int32_t start, int32_t length);
 
 bool WantsLineAndColumn() {
   // Perhaps just checking mBuilder would be sufficient.

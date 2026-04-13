@@ -268,6 +268,120 @@ mozilla::Maybe<std::tuple<size_t, size_t>> JSString::encodeUTF8Partial(
   return mozilla::Some(std::make_tuple(totalRead, totalWritten));
 }
 
+bool JSString::walkRope(JSContext* cx, void* context,
+                        JS_WalkRopeMayGCUTF16Func* utf16func,
+                        JS_WalkRopeMayGCLatin1Func* latin1func) {
+  if (this->empty()) {
+    return true;
+  }
+  if (this->isLinear()) {
+    // Handle the base case without re-rooting cost.
+    JS::AutoStableStringChars stableChars(cx);
+    if (!stableChars.init(cx, this)) {
+      return false;
+    }
+    if (MOZ_LIKELY(stableChars.isLatin1())) {
+      if (!(*latin1func)(context, stableChars.latin1Range())) {
+        return false;
+      }
+    } else {
+      if (!(*utf16func)(context, stableChars.twoByteRange())) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // GC triggered by the callbacks could move the rope segments, so
+  // root them all first.
+
+  // Every JSString here is actually JSLinearString.
+  JS::RootedVector<JSString*> linearStrings(cx);
+  mozilla::Vector<JSString*, 16, SystemAllocPolicy> stack;
+  JSString* current = this;
+  for (;;) {
+    if (current->isRope()) {
+      JSRope& rope = current->asRope();
+      if (!stack.append(rope.rightChild())) {
+        // OOM
+        return false;
+      }
+      current = rope.leftChild();
+      continue;
+    }
+
+    // XXX does rope building code guarantee non-empty segments?
+    if (!current->empty()) {
+      if (!linearStrings.append(current)) {
+        return false;
+      }
+    }
+    if (stack.empty()) {
+      break;
+    }
+    current = stack.popCopy();
+  }
+
+  for (JSString* str : linearStrings) {
+    JS::AutoStableStringChars stableChars(cx);
+    if (!stableChars.init(cx, str)) {
+      return false;
+    }
+    if (MOZ_LIKELY(stableChars.isLatin1())) {
+      if (!(*latin1func)(context, stableChars.latin1Range())) {
+        return false;
+      }
+    } else {
+      if (!(*utf16func)(context, stableChars.twoByteRange())) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+bool JSString::walkRopeUnsafe(
+    const JS::AutoRequireNoGC& nogc, void* context,
+    JS_UnsafeWalkRopeMustNotGCUTF16Func* utf16func,
+    JS_UnsafeWalkRopeMustNotGCLatin1Func* latin1func) const {
+  mozilla::Vector<const JSString*, 16, SystemAllocPolicy> stack;
+  const JSString* current = this;
+  for (;;) {
+    if (current->isRope()) {
+      // XXX if the length of a rope is too small, perhaps
+      // we should linearize it here.
+      JSRope& rope = current->asRope();
+      if (!stack.append(rope.rightChild())) {
+        // OOM
+        return false;
+      }
+      current = rope.leftChild();
+      continue;
+    }
+
+    JSLinearString& linear = current->asLinear();
+    if (!linear.empty()) {
+      if (MOZ_LIKELY(linear.hasLatin1Chars())) {
+        JS::AutoSuppressGCAnalysis suppress;
+        if (!(*latin1func)(context, linear.latin1Range(nogc))) {
+          return false;
+        }
+      } else {
+        JS::AutoSuppressGCAnalysis suppress;
+        if (!(*utf16func)(context, linear.twoByteRange(nogc))) {
+          return false;
+        }
+      }
+    }
+    if (stack.empty()) {
+      break;
+    }
+    current = stack.popCopy();
+  }
+  return true;
+}
+
 #if defined(DEBUG) || defined(JS_JITSPEW) || defined(JS_CACHEIR_SPEW)
 template <typename CharT>
 /*static */

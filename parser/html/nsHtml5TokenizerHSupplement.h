@@ -20,6 +20,14 @@ bool nextCharOnNewLine;
 // isn't too large for LLVM to perform LICM before LLVM looks for inlining
 // opportunities.
 
+int32_t StateLoopFastestSIMD(int32_t state, unsigned char c, int32_t pos,
+                             unsigned char* buf, bool reconsume,
+                             int32_t returnState, int32_t endPos);
+
+int32_t StateLoopFastestALU(int32_t state, unsigned char c, int32_t pos,
+                            unsigned char* buf, bool reconsume,
+                            int32_t returnState, int32_t endPos);
+
 int32_t StateLoopFastestSIMD(int32_t state, char16_t c, int32_t pos,
                              char16_t* buf, bool reconsume, int32_t returnState,
                              int32_t endPos);

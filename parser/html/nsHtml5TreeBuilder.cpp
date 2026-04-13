@@ -107,6 +107,7 @@ void nsHtml5TreeBuilder::setKeepBuffer(bool keepBuffer) {
 bool nsHtml5TreeBuilder::dropBufferIfLongerThan(int32_t length) {
   if (charBuffer.length > length) {
     charBuffer = nullptr;
+    latin1Buffer = nullptr;
     return true;
   }
   return false;
@@ -130,9 +131,10 @@ void nsHtml5TreeBuilder::startTokenization(nsHtml5Tokenizer* self) {
   formPointer = nullptr;
   headPointer = nullptr;
   start(fragment);
-  charBufferLen = 0;
+  clearCharBuffer();
   if (!keepBuffer) {
     charBuffer = nullptr;
+    latin1Buffer = nullptr;
   }
   framesetOk = true;
   if (fragment) {
@@ -262,263 +264,6 @@ void nsHtml5TreeBuilder::comment(char16_t* buf, int32_t start, int32_t length) {
   flushCharacters();
   appendComment(stack[currentPtr]->node, buf, start, length);
   return;
-}
-
-void nsHtml5TreeBuilder::characters(const char16_t* buf, int32_t start,
-                                    int32_t length) {
-  if (tokenizer->isViewingXmlSource()) {
-    return;
-  }
-  if (needToDropLF) {
-    needToDropLF = false;
-    if (buf[start] == '\n') {
-      start++;
-      length--;
-      if (!length) {
-        return;
-      }
-    }
-  }
-  switch (mode) {
-    case IN_BODY:
-    case IN_CELL:
-    case IN_CAPTION: {
-      if (!isInForeignButNotHtmlOrMathTextIntegrationPoint()) {
-        reconstructTheActiveFormattingElements();
-      }
-      [[fallthrough]];
-    }
-    case TEXT: {
-      accumulateCharacters(buf, start, length);
-      return;
-    }
-    case IN_TABLE:
-    case IN_TABLE_BODY:
-    case IN_ROW: {
-      accumulateCharactersForced(buf, start, length);
-      return;
-    }
-    default: {
-      int32_t end = start + length;
-      for (int32_t i = start; i < end; i++) {
-        switch (buf[i]) {
-          case ' ':
-          case '\t':
-          case '\n':
-          case '\r':
-          case '\f': {
-            switch (mode) {
-              case INITIAL:
-              case BEFORE_HTML:
-              case BEFORE_HEAD: {
-                start = i + 1;
-                continue;
-              }
-              case IN_HEAD:
-              case IN_HEAD_NOSCRIPT:
-              case AFTER_HEAD:
-              case IN_COLUMN_GROUP:
-              case IN_FRAMESET:
-              case AFTER_FRAMESET: {
-                continue;
-              }
-              case FRAMESET_OK:
-              case IN_TEMPLATE:
-              case IN_BODY:
-              case IN_CELL:
-              case IN_CAPTION: {
-                if (start < i) {
-                  accumulateCharacters(buf, start, i - start);
-                  start = i;
-                }
-                if (!isInForeignButNotHtmlOrMathTextIntegrationPoint()) {
-                  flushCharacters();
-                  reconstructTheActiveFormattingElements();
-                }
-                NS_HTML5_BREAK(charactersloop);
-              }
-              case IN_SELECT:
-              case IN_SELECT_IN_TABLE: {
-                MOZ_ASSERT(!noInSelectMode);
-                NS_HTML5_BREAK(charactersloop);
-              }
-              case IN_TABLE:
-              case IN_TABLE_BODY:
-              case IN_ROW: {
-                accumulateCharactersForced(buf, i, 1);
-                start = i + 1;
-                continue;
-              }
-              case AFTER_BODY:
-              case AFTER_AFTER_BODY:
-              case AFTER_AFTER_FRAMESET: {
-                if (start < i) {
-                  accumulateCharacters(buf, start, i - start);
-                  start = i;
-                }
-                flushCharacters();
-                reconstructTheActiveFormattingElements();
-                continue;
-              }
-            }
-            MOZ_FALLTHROUGH_ASSERT();
-          }
-          default: {
-            switch (mode) {
-              case INITIAL: {
-                documentModeInternal(QUIRKS_MODE, nullptr, nullptr);
-                mode = BEFORE_HTML;
-                i--;
-                continue;
-              }
-              case BEFORE_HTML: {
-                appendHtmlElementToDocumentAndPush();
-                mode = BEFORE_HEAD;
-                i--;
-                continue;
-              }
-              case BEFORE_HEAD: {
-                if (start < i) {
-                  accumulateCharacters(buf, start, i - start);
-                  start = i;
-                }
-                flushCharacters();
-                appendToCurrentNodeAndPushHeadElement(
-                    nsHtml5HtmlAttributes::EMPTY_ATTRIBUTES);
-                mode = IN_HEAD;
-                i--;
-                continue;
-              }
-              case IN_HEAD: {
-                if (start < i) {
-                  accumulateCharacters(buf, start, i - start);
-                  start = i;
-                }
-                flushCharacters();
-                pop();
-                mode = AFTER_HEAD;
-                i--;
-                continue;
-              }
-              case IN_HEAD_NOSCRIPT: {
-                if (start < i) {
-                  accumulateCharacters(buf, start, i - start);
-                  start = i;
-                }
-                errNonSpaceInNoscriptInHead();
-                flushCharacters();
-                pop();
-                mode = IN_HEAD;
-                i--;
-                continue;
-              }
-              case AFTER_HEAD: {
-                if (start < i) {
-                  accumulateCharacters(buf, start, i - start);
-                  start = i;
-                }
-                flushCharacters();
-                appendToCurrentNodeAndPushBodyElement();
-                mode = FRAMESET_OK;
-                i--;
-                continue;
-              }
-              case FRAMESET_OK: {
-                framesetOk = false;
-                mode = IN_BODY;
-                i--;
-                continue;
-              }
-              case IN_TEMPLATE:
-              case IN_BODY:
-              case IN_CELL:
-              case IN_CAPTION: {
-                if (start < i) {
-                  accumulateCharacters(buf, start, i - start);
-                  start = i;
-                }
-                if (!isInForeignButNotHtmlOrMathTextIntegrationPoint()) {
-                  flushCharacters();
-                  reconstructTheActiveFormattingElements();
-                }
-                NS_HTML5_BREAK(charactersloop);
-              }
-              case IN_TABLE:
-              case IN_TABLE_BODY:
-              case IN_ROW: {
-                accumulateCharactersForced(buf, i, 1);
-                start = i + 1;
-                continue;
-              }
-              case IN_COLUMN_GROUP: {
-                if (start < i) {
-                  accumulateCharacters(buf, start, i - start);
-                  start = i;
-                }
-                if (!currentPtr || stack[currentPtr]->getGroup() ==
-                                       nsHtml5TreeBuilder::TEMPLATE) {
-                  errNonSpaceInColgroupInFragment();
-                  start = i + 1;
-                  continue;
-                }
-                flushCharacters();
-                pop();
-                mode = IN_TABLE;
-                i--;
-                continue;
-              }
-              case IN_SELECT:
-              case IN_SELECT_IN_TABLE: {
-                MOZ_ASSERT(!noInSelectMode);
-                NS_HTML5_BREAK(charactersloop);
-              }
-              case AFTER_BODY: {
-                errNonSpaceAfterBody();
-
-                mode = framesetOk ? FRAMESET_OK : IN_BODY;
-                i--;
-                continue;
-              }
-              case IN_FRAMESET: {
-                if (start < i) {
-                  accumulateCharacters(buf, start, i - start);
-                }
-                errNonSpaceInFrameset();
-                start = i + 1;
-                continue;
-              }
-              case AFTER_FRAMESET: {
-                if (start < i) {
-                  accumulateCharacters(buf, start, i - start);
-                }
-                errNonSpaceAfterFrameset();
-                start = i + 1;
-                continue;
-              }
-              case AFTER_AFTER_BODY: {
-                errNonSpaceInTrailer();
-                mode = framesetOk ? FRAMESET_OK : IN_BODY;
-                i--;
-                continue;
-              }
-              case AFTER_AFTER_FRAMESET: {
-                if (start < i) {
-                  accumulateCharacters(buf, start, i - start);
-                }
-                errNonSpaceInTrailer();
-                start = i + 1;
-                continue;
-              }
-            }
-          }
-        }
-      }
-    charactersloop_end:;
-      if (start < end) {
-        accumulateCharacters(buf, start, end - start);
-      }
-    }
-  }
 }
 
 void nsHtml5TreeBuilder::zeroOriginatingReplacementCharacter() {
@@ -671,6 +416,7 @@ void nsHtml5TreeBuilder::endTokenization() {
   }
   if (!keepBuffer) {
     charBuffer = nullptr;
+    latin1Buffer = nullptr;
   }
   end();
 }
@@ -4670,36 +4416,49 @@ bool nsHtml5TreeBuilder::isNoInSelectMode() { return noInSelectMode; }
 void nsHtml5TreeBuilder::setNoInSelectMode(bool mode) { noInSelectMode = mode; }
 
 void nsHtml5TreeBuilder::flushCharacters() {
-  if (charBufferLen > 0) {
+  if (charBufferLen > 0 || latin1BufferLen > 0) {
     if ((mode == IN_TABLE || mode == IN_TABLE_BODY || mode == IN_ROW) &&
         charBufferContainsNonWhitespace()) {
       errNonSpaceInTable();
       reconstructTheActiveFormattingElements();
       if (!stack[currentPtr]->isFosterParenting()) {
-        appendCharacters(currentNode(), charBuffer, 0, charBufferLen);
-        charBufferLen = 0;
+        appendCharacters(currentNode());
+        clearCharBuffer();
         return;
       }
       int32_t tablePos = findLastOrRoot(nsHtml5TreeBuilder::TABLE);
       int32_t templatePos = findLastOrRoot(nsHtml5TreeBuilder::TEMPLATE);
       if (templatePos >= tablePos) {
-        appendCharacters(stack[templatePos]->node, charBuffer, 0,
-                         charBufferLen);
-        charBufferLen = 0;
+        appendCharacters(stack[templatePos]->node);
+        clearCharBuffer();
         return;
       }
       nsHtml5StackNode* tableElt = stack[tablePos];
-      insertFosterParentedCharacters(charBuffer, 0, charBufferLen,
-                                     tableElt->node, stack[tablePos - 1]->node);
-      charBufferLen = 0;
+      insertFosterParentedCharacters(tableElt->node, stack[tablePos - 1]->node);
+      clearCharBuffer();
       return;
     }
-    appendCharacters(currentNode(), charBuffer, 0, charBufferLen);
-    charBufferLen = 0;
+    appendCharacters(currentNode());
+    clearCharBuffer();
   }
 }
 
 bool nsHtml5TreeBuilder::charBufferContainsNonWhitespace() {
+  // XXX use SIMD
+  for (int32_t i = 0; i < latin1BufferLen; i++) {
+    switch (latin1Buffer[i]) {
+      case ' ':
+      case '\t':
+      case '\n':
+      case '\r':
+      case '\f': {
+        continue;
+      }
+      default: {
+        return true;
+      }
+    }
+  }
   for (int32_t i = 0; i < charBufferLen; i++) {
     switch (charBuffer[i]) {
       case ' ':

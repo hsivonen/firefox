@@ -8,6 +8,7 @@
 #include "mozilla/Attributes.h"
 #include "mozilla/dom/FetchPriority.h"
 #include "mozilla/dom/ScriptElement.h"
+#include "mozilla/dom/nsAStringOrJSString.h"
 #include "nsGenericHTMLElement.h"
 #include "nsStringFwd.h"
 
@@ -39,7 +40,7 @@ class HTMLScriptElement final : public nsGenericHTMLElement,
 
   void GetInnerHTML(nsAString& aInnerHTML, OOMReporter& aError) override;
 
-  void SetInnerHTMLTrusted(const nsAString& aInnerHTML,
+  void SetInnerHTMLTrusted(const nsAStringOrJSString aInnerHTML,
                            nsIPrincipal* aSubjectPrincipal,
                            mozilla::ErrorResult& aError) override;
 

@@ -6,6 +6,7 @@
 #define nsHtml5StringParser_h
 
 #include "mozilla/UniquePtr.h"
+#include "mozilla/dom/nsAStringOrJSString.h"
 #include "nsHtml5AtomTable.h"
 #include "nsParserBase.h"
 
@@ -45,7 +46,7 @@ class nsHtml5StringParser : public nsParserBase {
    * @param aAllowDeclarativeShadowRoots allow the creation of declarative
    * shadow roots.
    */
-  nsresult ParseFragment(const nsAString& aSourceBuffer,
+  nsresult ParseFragment(const mozilla::dom::nsAStringOrJSString aSourceBuffer,
                          nsIContent* aTargetNode, nsAtom* aContextLocalName,
                          int32_t aContextNamespace, bool aQuirks,
                          bool aPreventScriptExecution,
@@ -56,14 +57,18 @@ class nsHtml5StringParser : public nsParserBase {
    * DO NOT CALL from outside nsContentUtils.cpp.
    *
    */
-  nsresult ParseDocument(const nsAString& aSourceBuffer,
+  nsresult ParseDocument(const mozilla::dom::nsAStringOrJSString aSourceBuffer,
                          mozilla::dom::Document* aTargetDoc,
                          bool aScriptingEnabledForNoscriptParsing);
+
+  // Not actually public
+  template <typename Char>
+  bool Tokenize(mozilla::Span<const Char> aBuffer);
 
  private:
   virtual ~nsHtml5StringParser();
 
-  nsresult Tokenize(const nsAString& aSourceBuffer,
+  nsresult Tokenize(const mozilla::dom::nsAStringOrJSString aSourceBuffer,
                     mozilla::dom::Document* aDocument,
                     bool aScriptingEnabledForNoscriptParsing,
                     bool aDeclarativeShadowRootsAllowed);
@@ -108,6 +113,7 @@ class nsHtml5StringParser : public nsParserBase {
   };
 
   RefPtr<CacheClearer> mCacheClearer;
+  bool mLastWasCR = false;
 };
 
 #endif  // nsHtml5StringParser_h

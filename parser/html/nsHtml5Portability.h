@@ -48,7 +48,8 @@ class nsHtml5AttributeName;
 class nsHtml5ElementName;
 class nsHtml5Tokenizer;
 class nsHtml5TreeBuilder;
-class nsHtml5UTF16Buffer;
+template <typename Char>
+class nsHtml5Buffer;
 class nsHtml5StateSnapshot;
 
 class nsHtml5Portability {

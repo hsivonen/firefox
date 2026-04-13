@@ -5,6 +5,15 @@
 #include "nsHtml5Tokenizer.h"
 #include "nsHtml5TokenizerLoopPoliciesALU.h"
 
+int32_t nsHtml5Tokenizer::StateLoopFastestALU(int32_t state, unsigned char c,
+                                              int32_t pos, unsigned char* buf,
+                                              bool reconsume,
+                                              int32_t returnState,
+                                              int32_t endPos) {
+  return stateLoop<nsHtml5FastestPolicyALU>(state, c, pos, buf, reconsume,
+                                            returnState, endPos);
+}
+
 int32_t nsHtml5Tokenizer::StateLoopFastestALU(int32_t state, char16_t c,
                                               int32_t pos, char16_t* buf,
                                               bool reconsume,

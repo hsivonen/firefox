@@ -665,6 +665,16 @@ class JSString : public js::gc::CellWithLengthAndFlags {
   mozilla::Maybe<std::tuple<size_t, size_t>> encodeUTF8Partial(
       const JS::AutoRequireNoGC& nogc, mozilla::Span<char> buffer) const;
 
+  // Expected that the only caller is `JS_WalkRope`, whose signature ensures
+  // that `this` is rooted.
+  bool walkRope(JSContext* cx, void* context,
+                JS_WalkRopeMayGCUTF16Func* utf16func,
+                JS_WalkRopeMayGCLatin1Func* latin1func);
+
+  bool walkRopeUnsafe(const JS::AutoRequireNoGC& nogc, void* context,
+                      JS_UnsafeWalkRopeMustNotGCUTF16Func* utf16func,
+                      JS_UnsafeWalkRopeMustNotGCLatin1Func* latin1func) const;
+
  private:
   // To help avoid writing Spectre-unsafe code, we only allow MacroAssembler
   // to call the method below.

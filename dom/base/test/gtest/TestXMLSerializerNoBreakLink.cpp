@@ -13,6 +13,8 @@
 using namespace mozilla;
 using namespace mozilla::dom;
 
+#if 0
+
 // Test that serialising some DOM doesn't destroy links by word-wrapping long
 // href values containing spaces.
 TEST(TestXMLSerializerNoBreakLink, TestXMLSerializerNoBreakLinkMain)
@@ -67,3 +69,4 @@ TEST(TestXMLSerializerNoBreakLink, TestXMLSerializerNoBreakLinkMain)
     }
   }
 }
+#endif

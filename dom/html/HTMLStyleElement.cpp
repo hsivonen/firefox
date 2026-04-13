@@ -148,10 +148,12 @@ void HTMLStyleElement::GetInnerHTML(nsAString& aInnerHTML,
   }
 }
 
-void HTMLStyleElement::SetInnerHTMLTrusted(const nsAString& aInnerHTML,
+void HTMLStyleElement::SetInnerHTMLTrusted(const nsAStringOrJSString aInnerHTML,
                                            nsIPrincipal* aSubjectPrincipal,
                                            ErrorResult& aError) {
-  SetTextContentInternal(aInnerHTML, aSubjectPrincipal, aError);
+  nsAutoString str;
+  aInnerHTML.AssignTo(str);
+  SetTextContentInternal(str, aSubjectPrincipal, aError);
 }
 
 void HTMLStyleElement::SetTextContentInternal(const nsAString& aTextContent,

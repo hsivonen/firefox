@@ -52,7 +52,8 @@ class nsHtml5StreamParser;
 class nsHtml5AttributeName;
 class nsHtml5ElementName;
 class nsHtml5TreeBuilder;
-class nsHtml5UTF16Buffer;
+template <typename Char>
+class nsHtml5Buffer;
 class nsHtml5StateSnapshot;
 class nsHtml5Portability;
 
@@ -222,25 +223,25 @@ class nsHtml5Tokenizer {
  private:
   static const int32_t LEAD_OFFSET = (0xD800 - (0x10000 >> 10));
 
-  static char16_t LT_GT[];
-  static char16_t LT_SOLIDUS[];
-  static char16_t RSQB_RSQB[];
+  static unsigned char LT_GT[];
+  static unsigned char LT_SOLIDUS[];
+  static unsigned char RSQB_RSQB[];
   static char16_t REPLACEMENT_CHARACTER[];
-  static char16_t LF[];
-  static char16_t CDATA_LSQB[];
-  static char16_t OCTYPE[];
-  static char16_t UBLIC[];
-  static char16_t YSTEM[];
-  static staticJArray<char16_t, int32_t> TITLE_ARR;
-  static staticJArray<char16_t, int32_t> SCRIPT_ARR;
-  static staticJArray<char16_t, int32_t> STYLE_ARR;
-  static staticJArray<char16_t, int32_t> PLAINTEXT_ARR;
-  static staticJArray<char16_t, int32_t> XMP_ARR;
-  static staticJArray<char16_t, int32_t> TEXTAREA_ARR;
-  static staticJArray<char16_t, int32_t> IFRAME_ARR;
-  static staticJArray<char16_t, int32_t> NOEMBED_ARR;
-  static staticJArray<char16_t, int32_t> NOSCRIPT_ARR;
-  static staticJArray<char16_t, int32_t> NOFRAMES_ARR;
+  static unsigned char LF[];
+  static unsigned char CDATA_LSQB[];
+  static unsigned char OCTYPE[];
+  static unsigned char UBLIC[];
+  static unsigned char YSTEM[];
+  static staticJArray<unsigned char, int32_t> TITLE_ARR;
+  static staticJArray<unsigned char, int32_t> SCRIPT_ARR;
+  static staticJArray<unsigned char, int32_t> STYLE_ARR;
+  static staticJArray<unsigned char, int32_t> PLAINTEXT_ARR;
+  static staticJArray<unsigned char, int32_t> XMP_ARR;
+  static staticJArray<unsigned char, int32_t> TEXTAREA_ARR;
+  static staticJArray<unsigned char, int32_t> IFRAME_ARR;
+  static staticJArray<unsigned char, int32_t> NOEMBED_ARR;
+  static staticJArray<unsigned char, int32_t> NOSCRIPT_ARR;
+  static staticJArray<unsigned char, int32_t> NOFRAMES_ARR;
 
  protected:
   nsHtml5TreeBuilder* tokenHandler;
@@ -288,7 +289,7 @@ class nsHtml5Tokenizer {
   nsHtml5ElementName* endTagExpectation;
 
  private:
-  jArray<char16_t, int32_t> endTagExpectationAsArray;
+  jArray<unsigned char, int32_t> endTagExpectationAsArray;
 
  protected:
   bool endTag;
@@ -393,7 +394,7 @@ class nsHtml5Tokenizer {
 
   inline void emitStrBuf() {
     if (strBufLen > 0) {
-      tokenHandler->characters(strBuf, 0, strBufLen);
+      tokenHandler->charactersMaybeNarrow(strBuf, 0, strBufLen);
       clearStrBufAfterUse();
     }
   }
@@ -422,7 +423,13 @@ class nsHtml5Tokenizer {
   void emitComment(int32_t provisionalHyphens, int32_t pos);
 
  protected:
-  void flushChars(char16_t* buf, int32_t pos);
+  template <typename Char>
+  void flushChars(Char* buf, int32_t pos) {
+    if (pos > cstart) {
+      tokenHandler->characters(buf, cstart, pos - cstart);
+    }
+    cstart = INT32_MAX;
+  }
 
  private:
   void strBufToElementNameString();
@@ -433,12 +440,61 @@ class nsHtml5Tokenizer {
 
  public:
   void start();
-  bool tokenizeBuffer(nsHtml5UTF16Buffer* buffer);
+  template <typename Char>
+  bool tokenizeBuffer(nsHtml5Buffer<Char>* buffer) {
+    int32_t state = stateSave;
+    int32_t returnState = returnStateSave;
+    Char c = '\0';
+    shouldSuspend = false;
+    lastCR = false;
+    int32_t start = buffer->getStart();
+    int32_t end = buffer->getEnd();
+    int32_t pos = start - 1;
+    switch (state) {
+      case DATA:
+      case RCDATA:
+      case SCRIPT_DATA:
+      case PLAINTEXT:
+      case RAWTEXT:
+      case CDATA_SECTION:
+      case SCRIPT_DATA_ESCAPED:
+      case SCRIPT_DATA_ESCAPE_START:
+      case SCRIPT_DATA_ESCAPE_START_DASH:
+      case SCRIPT_DATA_ESCAPED_DASH:
+      case SCRIPT_DATA_ESCAPED_DASH_DASH:
+      case SCRIPT_DATA_DOUBLE_ESCAPE_START:
+      case SCRIPT_DATA_DOUBLE_ESCAPED:
+      case SCRIPT_DATA_DOUBLE_ESCAPED_LESS_THAN_SIGN:
+      case SCRIPT_DATA_DOUBLE_ESCAPED_DASH:
+      case SCRIPT_DATA_DOUBLE_ESCAPED_DASH_DASH:
+      case SCRIPT_DATA_DOUBLE_ESCAPE_END: {
+        cstart = start;
+        break;
+      }
+      default: {
+        cstart = INT32_MAX;
+        break;
+      }
+    }
+    pos = StateLoopWrap(state, c, pos, buffer, returnState);
+    if (pos == end) {
+      buffer->setStart(pos);
+    } else {
+      buffer->setStart(pos + 1);
+    }
+    return lastCR;
+  }
 
  private:
-  template <class P>
-  inline int32_t stateLoop(int32_t state, char16_t c, int32_t pos,
-                           char16_t* buf, bool reconsume, int32_t returnState,
+  int32_t StateLoopWrap(int32_t state, char16_t c, int32_t pos,
+                        nsHtml5Buffer<char16_t>* buffer, int32_t returnState);
+  int32_t StateLoopWrap(int32_t state, unsigned char c, int32_t pos,
+                        nsHtml5Buffer<unsigned char>* buffer,
+                        int32_t returnState);
+
+  template <class P, typename Char>
+  inline int32_t stateLoop(int32_t state, char16_t c, int32_t pos, Char* buf,
+                           bool reconsume, int32_t returnState,
                            int32_t endPos) {
     bool reportedConsecutiveHyphens = false;
   stateloop:
@@ -2220,8 +2276,8 @@ class nsHtml5Tokenizer {
                 appendStrBuf(charRefBuf, charRefBufMark,
                              charRefBufLen - charRefBufMark);
               } else {
-                tokenHandler->characters(charRefBuf, charRefBufMark,
-                                         charRefBufLen - charRefBufMark);
+                tokenHandler->charactersMaybeNarrow(
+                    charRefBuf, charRefBufMark, charRefBufLen - charRefBufMark);
               }
             }
             bool earlyBreak = (c == ';' && charRefBufMark == charRefBufLen);
@@ -4517,17 +4573,33 @@ class nsHtml5Tokenizer {
     appendStrBuf('\n');
   }
 
-  template <class P>
-  inline void emitCarriageReturn(char16_t* buf, int32_t pos) {
+  template <class P, typename Char>
+  inline void emitCarriageReturn(Char* buf, int32_t pos) {
     P::silentCarriageReturn(this);
     flushChars(buf, pos);
     tokenHandler->characters(nsHtml5Tokenizer::LF, 0, 1);
     cstart = INT32_MAX;
   }
 
-  void emitReplacementCharacter(char16_t* buf, int32_t pos);
-  void maybeEmitReplacementCharacter(char16_t* buf, int32_t pos);
-  void emitPlaintextReplacementCharacter(char16_t* buf, int32_t pos);
+  template <typename Char>
+  void emitReplacementCharacter(Char* buf, int32_t pos) {
+    flushChars(buf, pos);
+    tokenHandler->zeroOriginatingReplacementCharacter();
+    cstart = pos + 1;
+  }
+
+  template <typename Char>
+  void maybeEmitReplacementCharacter(Char* buf, int32_t pos) {
+    flushChars(buf, pos);
+    tokenHandler->zeroOrReplacementCharacter();
+    cstart = pos + 1;
+  }
+  template <typename Char>
+  void emitPlaintextReplacementCharacter(Char* buf, int32_t pos) {
+    flushChars(buf, pos);
+    tokenHandler->characters(REPLACEMENT_CHARACTER, 0, 1);
+    cstart = pos + 1;
+  }
   inline void setAdditionalAndRememberAmpersandLocation(char16_t add) {
     additional = add;
   }
@@ -4568,7 +4640,7 @@ class nsHtml5Tokenizer {
     if ((returnState & DATA_AND_RCDATA_MASK)) {
       appendStrBuf(val[0]);
     } else {
-      tokenHandler->characters(val, 0, 1);
+      tokenHandler->charactersMaybeNarrow(val, 0, 1);
     }
   }
 

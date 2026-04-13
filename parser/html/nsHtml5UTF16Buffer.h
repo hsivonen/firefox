@@ -52,25 +52,30 @@ class nsHtml5TreeBuilder;
 class nsHtml5StateSnapshot;
 class nsHtml5Portability;
 
-class nsHtml5UTF16Buffer {
+template <typename Char>
+class nsHtml5Buffer {
  private:
-  char16_t* buffer;
+  Char* buffer;
   int32_t start;
   int32_t end;
 
  public:
-  int32_t getStart();
-  void setStart(int32_t start);
-  char16_t* getBuffer();
-  int32_t getEnd();
-  bool hasMore();
-  int32_t getLength();
-  void adjust(bool lastWasCR);
-  void setEnd(int32_t end);
-  static void initializeStatics();
-  static void releaseStatics();
+  int32_t getStart() { return start; }
+  void setStart(int32_t start) { this->start = start; }
+  Char* getBuffer() { return buffer; }
+  int32_t getEnd() { return end; }
+  bool hasMore() { return start < end; }
+  int32_t getLength() { return end - start; }
+  void adjust(bool lastWasCR) {
+    if (lastWasCR && buffer[start] == '\n') {
+      start++;
+    }
+  }
+  void setEnd(int32_t end) { this->end = end; }
 
 #include "nsHtml5UTF16BufferHSupplement.h"
 };
+
+using nsHtml5UTF16Buffer = nsHtml5Buffer<char16_t>;
 
 #endif

@@ -2479,7 +2479,7 @@ void nsHtml5StreamParser::ParseAvailableData() {
         MarkAsBroken(NS_ERROR_OUT_OF_MEMORY);
         return;
       }
-      mLastWasCR = mTokenizer->tokenizeBuffer(mFirstBuffer);
+      mLastWasCR = mTokenizer->tokenizeBuffer(mFirstBuffer.get());
       nsresult rv;
       if (NS_FAILED((rv = mTreeBuilder->IsBroken()))) {
         MarkAsBroken(rv);

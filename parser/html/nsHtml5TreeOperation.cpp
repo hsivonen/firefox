@@ -222,8 +222,9 @@ nsHtml5TreeOperation::~nsHtml5TreeOperation() {
   mOperation.match(TreeOperationMatcher());
 }
 
+template <typename Char>
 nsresult nsHtml5TreeOperation::AppendTextToTextNode(
-    const char16_t* aBuffer, uint32_t aLength, Text* aTextNode,
+    const Char* aBuffer, uint32_t aLength, Text* aTextNode,
     nsHtml5DocumentBuilder* aBuilder) {
   MOZ_ASSERT(aTextNode, "Got null text node.");
   MOZ_ASSERT(aBuilder);
@@ -240,8 +241,17 @@ nsresult nsHtml5TreeOperation::AppendTextToTextNode(
   return rv;
 }
 
-nsresult nsHtml5TreeOperation::AppendText(const char16_t* aBuffer,
-                                          uint32_t aLength, nsIContent* aParent,
+template nsresult nsHtml5TreeOperation::AppendTextToTextNode<char16_t>(
+    const char16_t* aBuffer, uint32_t aLength, Text* aTextNode,
+    nsHtml5DocumentBuilder* aBuilder);
+
+template nsresult nsHtml5TreeOperation::AppendTextToTextNode<unsigned char>(
+    const unsigned char* aBuffer, uint32_t aLength, Text* aTextNode,
+    nsHtml5DocumentBuilder* aBuilder);
+
+template <typename Char>
+nsresult nsHtml5TreeOperation::AppendText(const Char* aBuffer, uint32_t aLength,
+                                          nsIContent* aParent,
                                           nsHtml5DocumentBuilder* aBuilder) {
   nsresult rv = NS_OK;
   nsIContent* lastChild = aParent->GetLastChild();
@@ -259,6 +269,14 @@ nsresult nsHtml5TreeOperation::AppendText(const char16_t* aBuffer,
 
   return Append(text, aParent, aBuilder);
 }
+
+template nsresult nsHtml5TreeOperation::AppendText<char16_t>(
+    const char16_t* aBuffer, uint32_t aLength, nsIContent* aParent,
+    nsHtml5DocumentBuilder* aBuilder);
+
+template nsresult nsHtml5TreeOperation::AppendText<unsigned char>(
+    const unsigned char* aBuffer, uint32_t aLength, nsIContent* aParent,
+    nsHtml5DocumentBuilder* aBuilder);
 
 nsresult nsHtml5TreeOperation::Append(nsIContent* aNode, nsIContent* aParent,
                                       nsHtml5DocumentBuilder* aBuilder) {
@@ -719,8 +737,9 @@ void nsHtml5TreeOperation::SetFormElement(nsIContent* aNode, nsIContent* aForm,
   }
 }
 
+template <typename Char>
 nsresult nsHtml5TreeOperation::FosterParentText(
-    nsIContent* aStackParent, char16_t* aBuffer, uint32_t aLength,
+    nsIContent* aStackParent, Char* aBuffer, uint32_t aLength,
     nsIContent* aTable, nsHtml5DocumentBuilder* aBuilder) {
   MOZ_ASSERT(aBuilder);
   MOZ_ASSERT(aBuilder->IsInDocUpdate());
@@ -755,6 +774,14 @@ nsresult nsHtml5TreeOperation::FosterParentText(
 
   return AppendText(aBuffer, aLength, aStackParent, aBuilder);
 }
+
+template nsresult nsHtml5TreeOperation::FosterParentText<char16_t>(
+    nsIContent* aStackParent, char16_t* aBuffer, uint32_t aLength,
+    nsIContent* aTable, nsHtml5DocumentBuilder* aBuilder);
+
+template nsresult nsHtml5TreeOperation::FosterParentText<unsigned char>(
+    nsIContent* aStackParent, unsigned char* aBuffer, uint32_t aLength,
+    nsIContent* aTable, nsHtml5DocumentBuilder* aBuilder);
 
 nsresult nsHtml5TreeOperation::AppendComment(nsIContent* aParent,
                                              char16_t* aBuffer, int32_t aLength,

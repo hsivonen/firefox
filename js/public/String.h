@@ -379,6 +379,46 @@ JS_PUBLIC_API mozilla::Maybe<std::tuple<size_t, size_t>>
 JS_EncodeStringToUTF8BufferPartial(JSContext* cx, JSString* str,
                                    mozilla::Span<char> buffer);
 
+using JS_WalkRopeMayGCUTF16Func = bool(void* context,
+                                       mozilla::Span<const char16_t> segment);
+using JS_WalkRopeMayGCLatin1Func =
+    bool(void* context, mozilla::Span<const unsigned char> segment);
+
+using JS_UnsafeWalkRopeMustNotGCUTF16Func =
+    bool(void* context, mozilla::Span<const char16_t> segment);
+using JS_UnsafeWalkRopeMustNotGCLatin1Func =
+    bool(void* context, mozilla::Span<const unsigned char> segment);
+
+/**
+ * Walks a potentially-rope string and calls `utf16func` for UTF-16 segments and
+ * `latin1func` for Latin1 segments. The callbacks are not called for empty
+ * segments. The callbacks are allowed to trigger GC.
+ *
+ * `context` is passed back to the callbacks.
+ *
+ * Return `false` either on OOM (possible due to internally using a stack) or if
+ * a callback returned `false`. Otherwise return `true`.
+ */
+JS_PUBLIC_API bool JS_WalkRope(JSContext* cx, JS::Handle<JSString*> str,
+                               void* context,
+                               JS_WalkRopeMayGCUTF16Func* utf16func,
+                               JS_WalkRopeMayGCLatin1Func* latin1func);
+
+/**
+ * Walks a potentially-rope string and calls `utf16func` for UTF-16 segments and
+ * `latin1func` for Latin1 segments. The callbacks are not called for empty
+ * segments. The callbacks are MUST NOT trigger GC.
+ *
+ * `context` is passed back to the callbacks.
+ *
+ * Return `false` either on OOM (possible due to internally using a stack) or if
+ * a callback returned `false`. Otherwise return `true`.
+ */
+JS_PUBLIC_API bool JS_WalkRopeUnsafe(
+    JSContext* cx, JSString* str, void* context,
+    JS_UnsafeWalkRopeMustNotGCUTF16Func* utf16func,
+    JS_UnsafeWalkRopeMustNotGCLatin1Func* latin1func);
+
 namespace JS {
 
 /**
