@@ -5147,8 +5147,21 @@ void Element::SetInnerHTML(JSContext* aCx, JS::Handle<JSString*> aInnerHTML,
                            nsIPrincipal* aSubjectPrincipal,
                            ErrorResult& aError) {
   // XXX Trusted Types
-  nsAStringOrJSString wrap(aCx, aInnerHTML);
-  SetInnerHTMLTrusted(wrap, aSubjectPrincipal, aError);
+  if (JS::StringHasLatin1Chars(aInnerHTML)) {
+    nsAutoCString flat;
+    if (!AssignJSStringLatin1(aCx, flat, aInnerHTML)) {
+      aError = NS_ERROR_OUT_OF_MEMORY;
+      return;
+    }
+    SetInnerHTMLTrusted(flat, aSubjectPrincipal, aError);
+  } else {
+    nsAutoString flat;
+    if (!AssignJSString(aCx, flat, aInnerHTML)) {
+      aError = NS_ERROR_OUT_OF_MEMORY;
+      return;
+    }
+    SetInnerHTMLTrusted(flat, aSubjectPrincipal, aError);
+  }
 }
 
 void Element::GetInnerHTML(nsAString& aInnerHTML, OOMReporter& aError) {

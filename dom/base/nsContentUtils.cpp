@@ -6817,8 +6817,9 @@ already_AddRefed<Document> nsContentUtils::CreateInertHTMLDocument(
 }
 
 /* static */
+template <typename CharT>
 nsresult nsContentUtils::SetNodeTextContent(
-    nsIContent* aContent, const nsAString& aValue, bool aTryReuse,
+    nsIContent* aContent, const nsTSubstring<CharT>& aValue, bool aTryReuse,
     MutationEffectOnScript aMutationEffectOnScript) {
   // Optimize the common case of there being no observers
   if (MOZ_UNLIKELY(
@@ -6894,6 +6895,14 @@ nsresult nsContentUtils::SetNodeTextContent(
   mb.NodesAdded();
   return rv.StealNSResult();
 }
+
+template nsresult nsContentUtils::SetNodeTextContent<char16_t>(
+    nsIContent* aContent, const nsTSubstring<char16_t>& aValue, bool aTryReuse,
+    MutationEffectOnScript aMutationEffectOnScript);
+
+template nsresult nsContentUtils::SetNodeTextContent<char>(
+    nsIContent* aContent, const nsTSubstring<char>& aValue, bool aTryReuse,
+    MutationEffectOnScript aMutationEffectOnScript);
 
 static bool AppendNodeTextContentsRecurse(const nsINode* aNode,
                                           nsAString& aResult,

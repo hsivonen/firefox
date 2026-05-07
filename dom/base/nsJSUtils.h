@@ -86,6 +86,25 @@ class nsJSUtils {
       mozilla::UniquePtr<uint8_t[], JS::FreePolicy> aBuffer);
 };
 
+inline bool AssignJSStringLatin1(JSContext* cx, nsACString& dest, JSString* s) {
+  size_t len = JS::GetStringLength(s);
+  static_assert(JS::MaxStringLength < (1 << 30),
+                "Shouldn't overflow here or in SetCapacity");
+
+  if (XPCStringConvert::MaybeAssignLatin1StringChars(cx, s, len, dest)) {
+    return true;
+  }
+
+  // We don't bother checking for a dynamic-atom external string, because we'd
+  // just need to copy out of it anyway.
+
+  if (MOZ_UNLIKELY(!dest.SetLength(len, mozilla::fallible))) {
+    JS_ReportOutOfMemory(cx);
+    return false;
+  }
+  return JS::LossyCopyStringChars(cx, dest.BeginWriting(), s, len);
+}
+
 template <typename T, typename std::enable_if_t<std::is_same<
                           typename T::char_type, char16_t>::value>* = nullptr>
 inline bool AssignJSString(JSContext* cx, T& dest, JSString* s) {

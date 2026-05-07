@@ -2021,9 +2021,13 @@ void FragmentOrElement::SetInnerHTMLInternal(
   // optional <head> and <body> elements.
   if (!target->HasWeirdParserInsertionMode() && aInnerHTML.Length() < 100 &&
       DoesNotContainMarkup(aInnerHTML)) {
-    nsString str;
-    aInnerHTML.AssignTo(str);
-    aError = nsContentUtils::SetNodeTextContent(target, str, false);
+    if (aInnerHTML.IsLatin1()) {
+      aError = nsContentUtils::SetNodeTextContent(
+          target, aInnerHTML.GetLatin1(), false);
+      return;
+    }
+    aError = nsContentUtils::SetNodeTextContent(target, aInnerHTML.GetUTF16(),
+                                                false);
     return;
   }
 

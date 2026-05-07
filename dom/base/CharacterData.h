@@ -134,12 +134,16 @@ class CharacterData : public nsIContent {
    * the document is notified of the content change.
    */
   nsresult SetText(const char16_t* aBuffer, uint32_t aLength, bool aNotify);
-  /**
-   * Append the given value to the current text. If aNotify is true then
-   * the document is notified of the content change.
-   */
+
   nsresult SetText(const nsAString& aStr, bool aNotify) {
+    // TODO: Should not copy the buffer.
     return SetText(aStr.BeginReading(), aStr.Length(), aNotify);
+  }
+
+  nsresult SetText(const nsACString& aStr, bool aNotify) {
+    // TODO: Should not copy the buffer.
+    return SetText(reinterpret_cast<const unsigned char*>(aStr.BeginReading()),
+                   aStr.Length(), aNotify);
   }
 
   /**

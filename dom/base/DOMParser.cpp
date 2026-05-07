@@ -71,8 +71,23 @@ already_AddRefed<Document> DOMParser::ParseFromStringInternal(
       document->ForceSkipDTDSecurityChecks();
     }
 
-    nsAStringOrJSString wrap(aCx, aStr);
-    nsresult rv = nsContentUtils::ParseDocumentHTML(wrap, document, false);
+    nsresult rv;
+    if (JS::StringHasLatin1Chars(aStr)) {
+      nsAutoCString flat;
+      if (!AssignJSStringLatin1(aCx, flat, aStr)) {
+        rv = NS_ERROR_OUT_OF_MEMORY;
+      } else {
+        rv = nsContentUtils::ParseDocumentHTML(flat, document, false);
+      }
+    } else {
+      nsAutoString flat;
+      if (!AssignJSString(aCx, flat, aStr)) {
+        rv = NS_ERROR_OUT_OF_MEMORY;
+      } else {
+        rv = nsContentUtils::ParseDocumentHTML(flat, document, false);
+      }
+    }
+
     if (NS_WARN_IF(NS_FAILED(rv))) {
       aRv.Throw(rv);
       return nullptr;
