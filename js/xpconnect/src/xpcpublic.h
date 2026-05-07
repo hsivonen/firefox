@@ -354,10 +354,14 @@ class XPCStringConvert {
           "AcceptedEncoding::ASCII can be used only with single byte");
     }
 
-    // Linearization may result in the string having a StringBuffer.
-    JSLinearString* linear = JS_EnsureLinearString(cx, s);
-    if (linear) {
-      s = JS_FORGET_STRING_LINEARNESS(linear);
+    if constexpr (encoding != AcceptedEncoding::ASCII) {
+      // Linearization may result in the string having a StringBuffer,
+      // but don't do this if we are targeting UTF-8, since we don't
+      // want a conversion to UTF-16 here in that case.
+      JSLinearString* linear = JS_EnsureLinearStringPreferStringBuffer(cx, s);
+      if (linear) {
+        s = JS_FORGET_STRING_LINEARNESS(linear);
+      }
     }
 
     const DestCharT* chars;

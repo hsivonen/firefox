@@ -615,11 +615,9 @@ JSExtensibleString& JSLinearString::makeExtensible(size_t capacity) {
 }
 
 template <typename CharT>
-static MOZ_ALWAYS_INLINE bool AllocCharsForFlatten(Nursery& nursery,
-                                                   JSString* str, size_t length,
-                                                   CharT** chars,
-                                                   size_t* capacity,
-                                                   bool* hasStringBuffer) {
+static MOZ_ALWAYS_INLINE bool AllocCharsForFlatten(
+    Nursery& nursery, JSString* str, size_t length, CharT** chars,
+    size_t* capacity, bool* hasStringBuffer, bool preferStringBuffer) {
   /*
    * Grow by 12.5% if the buffer is very large. Otherwise, round up to the
    * next power of 2. This is similar to what we do with object elements; see
@@ -635,7 +633,8 @@ static MOZ_ALWAYS_INLINE bool AllocCharsForFlatten(Nursery& nursery,
     return capacity;
   };
 
-  if (length < JSString::MIN_BYTES_FOR_BUFFER / sizeof(CharT)) {
+  if (!preferStringBuffer &&
+      length < JSString::MIN_BYTES_FOR_BUFFER / sizeof(CharT)) {
     *capacity = calcCapacity(length, JSString::MAX_LENGTH);
     MOZ_ASSERT(length <= *capacity);
     MOZ_ASSERT(*capacity <= JSString::MAX_LENGTH);
@@ -1004,13 +1003,13 @@ static bool CanReuseLeftmostBuffer(JSString* leftmostChild, size_t wholeLength,
   return true;
 }
 
-JSLinearString* JSRope::flatten(JSContext* maybecx) {
+JSLinearString* JSRope::flatten(JSContext* maybecx, bool preferStringBuffer) {
   mozilla::Maybe<AutoGeckoProfilerEntry> entry;
   if (maybecx) {
     entry.emplace(maybecx, "JSRope::flatten");
   }
 
-  JSLinearString* str = flattenInternal();
+  JSLinearString* str = flattenInternal(preferStringBuffer);
   if (!str && maybecx) {
     ReportOutOfMemory(maybecx);
   }
@@ -1018,26 +1017,26 @@ JSLinearString* JSRope::flatten(JSContext* maybecx) {
   return str;
 }
 
-JSLinearString* JSRope::flattenInternal() {
+JSLinearString* JSRope::flattenInternal(bool preferStringBuffer) {
   if (zone()->needsMarkingBarrier()) {
-    return flattenInternal<WithIncrementalBarrier>();
+    return flattenInternal<WithIncrementalBarrier>(preferStringBuffer);
   }
 
-  return flattenInternal<NoBarrier>();
+  return flattenInternal<NoBarrier>(preferStringBuffer);
 }
 
 template <JSRope::UsingBarrier usingBarrier>
-JSLinearString* JSRope::flattenInternal() {
+JSLinearString* JSRope::flattenInternal(bool preferStringBuffer) {
   if (hasTwoByteChars()) {
-    return flattenInternal<usingBarrier, char16_t>(this);
+    return flattenInternal<usingBarrier, char16_t>(this, preferStringBuffer);
   }
 
-  return flattenInternal<usingBarrier, Latin1Char>(this);
+  return flattenInternal<usingBarrier, Latin1Char>(this, preferStringBuffer);
 }
 
 template <JSRope::UsingBarrier usingBarrier, typename CharT>
 /* static */
-JSLinearString* JSRope::flattenInternal(JSRope* root) {
+JSLinearString* JSRope::flattenInternal(JSRope* root, bool preferStringBuffer) {
   /*
    * Consider the DAG of JSRopes rooted at |root|, with non-JSRopes as
    * its leaves. Mutate the root JSRope into a JSExtensibleString containing
@@ -1135,7 +1134,8 @@ JSLinearString* JSRope::flattenInternal(JSRope* root) {
   } else {
     // If we can't reuse the leftmost child's buffer, allocate a new one.
     if (!AllocCharsForFlatten(nursery, root, wholeLength, &wholeChars,
-                              &wholeCapacity, &hasStringBuffer)) {
+                              &wholeCapacity, &hasStringBuffer,
+                              preferStringBuffer)) {
       return nullptr;
     }
   }

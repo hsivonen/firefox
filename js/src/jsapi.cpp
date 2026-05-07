@@ -3501,6 +3501,14 @@ extern JS_PUBLIC_API JSLinearString* JS_EnsureLinearString(JSContext* cx,
   return str->ensureLinear(cx);
 }
 
+extern JS_PUBLIC_API JSLinearString* JS_EnsureLinearStringPreferStringBuffer(
+    JSContext* cx, JSString* str) {
+  AssertHeapIsIdle();
+  CHECK_THREAD(cx);
+  cx->check(str);
+  return str->ensureLinear(cx, true);
+}
+
 JS_PUBLIC_API bool JS_CompareStrings(JSContext* cx, JSString* str1,
                                      JSString* str2, int32_t* result) {
   AssertHeapIsIdle();

@@ -262,6 +262,9 @@ extern JS_PUBLIC_API JS::UniqueTwoByteChars JS_CopyStringCharsZ(JSContext* cx,
 extern JS_PUBLIC_API JSLinearString* JS_EnsureLinearString(JSContext* cx,
                                                            JSString* str);
 
+extern JS_PUBLIC_API JSLinearString* JS_EnsureLinearStringPreferStringBuffer(
+    JSContext* cx, JSString* str);
+
 static MOZ_ALWAYS_INLINE JSLinearString* JS_ASSERT_STRING_IS_LINEAR(
     JSString* str) {
   MOZ_ASSERT(JS_StringIsLinear(str));

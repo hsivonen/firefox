@@ -484,7 +484,8 @@ class JSString : public js::gc::CellWithLengthAndFlags {
 
   /* Fallible conversions to more-derived string types. */
 
-  inline JSLinearString* ensureLinear(JSContext* cx);
+  inline JSLinearString* ensureLinear(JSContext* cx,
+                                      bool preferStringBuffer = false);
 
   /* Type query and debug-checked casts */
 
@@ -836,14 +837,14 @@ class JSRope : public JSString {
   enum UsingBarrier : bool { NoBarrier = false, WithIncrementalBarrier = true };
 
   friend class JSString;
-  JSLinearString* flatten(JSContext* maybecx);
+  JSLinearString* flatten(JSContext* maybecx, bool preferStringBuffer);
 
-  JSLinearString* flattenInternal();
+  JSLinearString* flattenInternal(bool preferStringBuffer);
   template <UsingBarrier usingBarrier>
-  JSLinearString* flattenInternal();
+  JSLinearString* flattenInternal(bool preferStringBuffer);
 
   template <UsingBarrier usingBarrier, typename CharT>
-  static JSLinearString* flattenInternal(JSRope* root);
+  static JSLinearString* flattenInternal(JSRope* root, bool preferStringBuffer);
 
   template <UsingBarrier usingBarrier>
   static void ropeBarrierDuringFlattening(JSRope* rope);
@@ -2283,8 +2284,9 @@ MOZ_ALWAYS_INLINE bool JSString::getCodePoint(JSContext* cx, size_t index,
   return true;
 }
 
-MOZ_ALWAYS_INLINE JSLinearString* JSString::ensureLinear(JSContext* cx) {
-  return isLinear() ? &asLinear() : asRope().flatten(cx);
+MOZ_ALWAYS_INLINE JSLinearString* JSString::ensureLinear(
+    JSContext* cx, bool preferStringBuffer) {
+  return isLinear() ? &asLinear() : asRope().flatten(cx, preferStringBuffer);
 }
 
 inline JSLinearString* JSString::base() const {
