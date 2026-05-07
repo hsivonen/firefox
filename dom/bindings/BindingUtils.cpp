@@ -2803,7 +2803,7 @@ bool ConvertJSValueToByteString(BindingCallContext& cx, JS::Handle<JS::Value> v,
     s = v.toString();
 
     size_t length = JS::GetStringLength(s);
-    if (XPCStringConvert::MaybeAssignLatin1StringChars(s, length, result)) {
+    if (XPCStringConvert::MaybeAssignLatin1StringChars(cx, s, length, result)) {
       return true;
     }
   } else {

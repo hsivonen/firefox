@@ -343,7 +343,8 @@ class XPCStringConvert {
 
   template <typename SrcCharT, typename DestCharT, AcceptedEncoding encoding,
             typename T>
-  static MOZ_ALWAYS_INLINE bool MaybeAssignStringChars(JSString* s, size_t len,
+  static MOZ_ALWAYS_INLINE bool MaybeAssignStringChars(JSContext* cx,
+                                                       JSString* s, size_t len,
                                                        T& dest) {
     MOZ_ASSERT(len == JS::GetStringLength(s));
     static_assert(sizeof(SrcCharT) == sizeof(DestCharT));
@@ -351,6 +352,12 @@ class XPCStringConvert {
       static_assert(
           std::is_same_v<DestCharT, char>,
           "AcceptedEncoding::ASCII can be used only with single byte");
+    }
+
+    // Linearization may result in the string having a StringBuffer.
+    JSLinearString* linear = JS_EnsureLinearString(cx, s);
+    if (linear) {
+      s = JS_FORGET_STRING_LINEARNESS(linear);
     }
 
     const DestCharT* chars;
@@ -398,26 +405,29 @@ class XPCStringConvert {
 
  public:
   template <typename T>
-  static MOZ_ALWAYS_INLINE bool MaybeAssignUCStringChars(JSString* s,
+  static MOZ_ALWAYS_INLINE bool MaybeAssignUCStringChars(JSContext* cx,
+                                                         JSString* s,
                                                          size_t len, T& dest) {
     return MaybeAssignStringChars<char16_t, char16_t, AcceptedEncoding::All>(
-        s, len, dest);
+        cx, s, len, dest);
   }
 
   template <typename T>
-  static MOZ_ALWAYS_INLINE bool MaybeAssignLatin1StringChars(JSString* s,
+  static MOZ_ALWAYS_INLINE bool MaybeAssignLatin1StringChars(JSContext* cx,
+                                                             JSString* s,
                                                              size_t len,
                                                              T& dest) {
     return MaybeAssignStringChars<JS::Latin1Char, char, AcceptedEncoding::All>(
-        s, len, dest);
+        cx, s, len, dest);
   }
 
   template <typename T>
-  static MOZ_ALWAYS_INLINE bool MaybeAssignUTF8StringChars(JSString* s,
+  static MOZ_ALWAYS_INLINE bool MaybeAssignUTF8StringChars(JSContext* cx,
+                                                           JSString* s,
                                                            size_t len,
                                                            T& dest) {
     return MaybeAssignStringChars<JS::Latin1Char, char,
-                                  AcceptedEncoding::ASCII>(s, len, dest);
+                                  AcceptedEncoding::ASCII>(cx, s, len, dest);
   }
 
  private:

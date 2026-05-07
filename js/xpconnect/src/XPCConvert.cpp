@@ -661,7 +661,8 @@ bool XPCConvert::JSData2Native(JSContext* cx, void* d, HandleValue s,
 
         // The string can be an external latin-1 string created in
         // XPCConvert::NativeData2JS's nsXPTType::T_CSTRING case.
-        if (XPCStringConvert::MaybeAssignLatin1StringChars(str, length, *rs)) {
+        if (XPCStringConvert::MaybeAssignLatin1StringChars(cx, str, length,
+                                                           *rs)) {
           return true;
         }
       } else {

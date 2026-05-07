@@ -93,7 +93,7 @@ inline bool AssignJSString(JSContext* cx, T& dest, JSString* s) {
   static_assert(JS::MaxStringLength < (1 << 30),
                 "Shouldn't overflow here or in SetCapacity");
 
-  if (XPCStringConvert::MaybeAssignUCStringChars(s, len, dest)) {
+  if (XPCStringConvert::MaybeAssignUCStringChars(cx, s, len, dest)) {
     return true;
   }
 
@@ -114,7 +114,8 @@ inline bool AssignJSString(JSContext* cx, T& dest, JSString* s) {
   using namespace mozilla;
   CheckedInt<size_t> bufLen(JS::GetStringLength(s));
 
-  if (XPCStringConvert::MaybeAssignUTF8StringChars(s, bufLen.value(), dest)) {
+  if (XPCStringConvert::MaybeAssignUTF8StringChars(cx, s, bufLen.value(),
+                                                   dest)) {
     return true;
   }
 
