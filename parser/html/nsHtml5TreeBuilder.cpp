@@ -120,7 +120,6 @@ void nsHtml5TreeBuilder::startTokenization(nsHtml5Tokenizer* self) {
   listOfActiveFormattingElements =
       jArray<nsHtml5StackNode*, int32_t>::newJArray(64);
   needToDropLF = false;
-  mode = INITIAL;
   originalMode = INITIAL;
   templateModePtr = -1;
   stackNodesIdx = 0;
@@ -706,12 +705,15 @@ starttagloop:
                     attributes->contains(nsHtml5AttributeName::ATTR_FACE) ||
                     attributes->contains(nsHtml5AttributeName::ATTR_SIZE)))) {
               errHtmlStartTagInForeignContext(name);
-              if (!fragment) {
-                while (!isSpecialParentInForeign(stack[currentPtr])) {
-                  popForeign(-1, -1);
-                }
+              while (currentPtr > 0 &&
+                     !isSpecialParentInForeign(stack[currentPtr])) {
+                popForeign(-1, -1);
+              }
+              if (currentPtr > 0 ||
+                  isSpecialParentInForeign(stack[currentPtr])) {
                 NS_HTML5_CONTINUE(starttagloop);
               }
+              break;
             }
             [[fallthrough]];
           }
@@ -1344,7 +1346,12 @@ starttagloop:
                          nsHtml5TreeBuilder::NOT_FOUND_ON_STACK ||
                      findLastInScope(nsGkAtoms::optgroup) !=
                          nsHtml5TreeBuilder::NOT_FOUND_ON_STACK)) {
-                  errUnclosedElements(currentPtr, name);
+                  errUnclosedElementsImplied(
+                      findLastInScope(nsGkAtoms::option) !=
+                              nsHtml5TreeBuilder::NOT_FOUND_ON_STACK
+                          ? findLastInScope(nsGkAtoms::option)
+                          : findLastInScope(nsGkAtoms::optgroup),
+                      name);
                 }
               }
               appendVoidElementToCurrentMayFoster(elementName, attributes);
@@ -1357,23 +1364,23 @@ starttagloop:
               elementName = nsHtml5ElementName::ELT_IMG;
               NS_HTML5_CONTINUE(starttagloop);
             }
+            case IMG: {
+              reconstructTheActiveFormattingElements();
+              appendVoidElementToCurrentMayFoster(elementName, attributes,
+                                                  formPointer);
+              selfClosing = false;
+              attributes = nullptr;
+              NS_HTML5_BREAK(starttagloop);
+            }
             case INPUT: {
-              if (fragment && nsGkAtoms::select == contextName) {
-                errStartTagWithSelectOpen(name);
-                NS_HTML5_BREAK(starttagloop);
-              }
               eltPos = findLastInScope(nsGkAtoms::select);
               if (eltPos != nsHtml5TreeBuilder::NOT_FOUND_ON_STACK) {
                 errStartTagWithSelectOpen(name);
                 while (currentPtr >= eltPos) {
                   pop();
                 }
-                resetTheInsertionMode();
                 NS_HTML5_CONTINUE(starttagloop);
               }
-              [[fallthrough]];
-            }
-            case IMG: {
               reconstructTheActiveFormattingElements();
               appendVoidElementToCurrentMayFoster(elementName, attributes,
                                                   formPointer);
@@ -1426,7 +1433,7 @@ starttagloop:
                 errStartSelectWhereEndSelectExpected();
                 NS_HTML5_BREAK(starttagloop);
               }
-              eltPos = findLastInScope(nsGkAtoms::select);
+              eltPos = findLastInScope(name);
               if (eltPos != nsHtml5TreeBuilder::NOT_FOUND_ON_STACK) {
                 errStartSelectWhereEndSelectExpected();
                 while (currentPtr >= eltPos) {
@@ -1445,10 +1452,11 @@ starttagloop:
               if (findLastInScope(nsGkAtoms::select) !=
                   nsHtml5TreeBuilder::NOT_FOUND_ON_STACK) {
                 generateImpliedEndTagsExceptFor(nsGkAtoms::optgroup);
-                if (!!MOZ_UNLIKELY(mViewSource) &&
-                    findLastInScope(nsGkAtoms::option) !=
-                        nsHtml5TreeBuilder::NOT_FOUND_ON_STACK) {
-                  errUnclosedElements(findLastInScope(nsGkAtoms::option), name);
+                if (MOZ_UNLIKELY(mViewSource)) {
+                  int32_t optionPos = findLastInScope(nsGkAtoms::option);
+                  if (optionPos != nsHtml5TreeBuilder::NOT_FOUND_ON_STACK) {
+                    errUnclosedElementsImplied(optionPos, name);
+                  }
                 }
               } else {
                 if (isCurrent(nsGkAtoms::option)) {
@@ -1456,7 +1464,8 @@ starttagloop:
                 }
               }
               reconstructTheActiveFormattingElements();
-              appendToCurrentNodeAndPushElement(elementName, attributes);
+              appendToCurrentNodeAndPushElementMayFoster(elementName,
+                                                         attributes);
               attributes = nullptr;
               NS_HTML5_BREAK(starttagloop);
             }
@@ -1464,18 +1473,25 @@ starttagloop:
               if (findLastInScope(nsGkAtoms::select) !=
                   nsHtml5TreeBuilder::NOT_FOUND_ON_STACK) {
                 generateImpliedEndTags();
-                if (!!MOZ_UNLIKELY(mViewSource) &&
-                    (findLastInScope(nsGkAtoms::option) !=
-                         nsHtml5TreeBuilder::NOT_FOUND_ON_STACK ||
-                     findLastInScope(nsGkAtoms::optgroup) !=
-                         nsHtml5TreeBuilder::NOT_FOUND_ON_STACK)) {
-                  errUnclosedElements(currentPtr, name);
+                if (MOZ_UNLIKELY(mViewSource)) {
+                  int32_t optionPos = findLastInScope(nsGkAtoms::option);
+                  if (optionPos != nsHtml5TreeBuilder::NOT_FOUND_ON_STACK) {
+                    errUnclosedElementsImplied(optionPos, name);
+                  } else {
+                    int32_t optgroupPos = findLastInScope(nsGkAtoms::optgroup);
+                    if (optgroupPos != nsHtml5TreeBuilder::NOT_FOUND_ON_STACK) {
+                      errUnclosedElementsImplied(optgroupPos, name);
+                    }
+                  }
                 }
-              } else if (isCurrent(nsGkAtoms::option)) {
-                pop();
+              } else {
+                if (isCurrent(nsGkAtoms::option)) {
+                  pop();
+                }
               }
               reconstructTheActiveFormattingElements();
-              appendToCurrentNodeAndPushElement(elementName, attributes);
+              appendToCurrentNodeAndPushElementMayFoster(elementName,
+                                                         attributes);
               attributes = nullptr;
               NS_HTML5_BREAK(starttagloop);
             }
@@ -1543,11 +1559,11 @@ starttagloop:
               NS_HTML5_BREAK(starttagloop);
             }
             case CAPTION:
-            case COL:
-            case COLGROUP:
             case TBODY_OR_THEAD_OR_TFOOT:
             case TR:
             case TD_OR_TH:
+            case COL:
+            case COLGROUP:
             case FRAME:
             case FRAMESET:
             case HEAD: {
@@ -2323,6 +2339,9 @@ void nsHtml5TreeBuilder::endTag(nsHtml5ElementName* elementName) {
           MOZ_ASSERT(fragment,
                      "We can get this close to the root of the stack in "
                      "foreign content only in the fragment case.");
+          if (group == P || group == BR) {
+            break;
+          }
           NS_HTML5_BREAK(endtagloop);
         }
         if (stack[eltPos]->name == name) {
@@ -2645,8 +2664,8 @@ void nsHtml5TreeBuilder::endTag(nsHtml5ElementName* elementName) {
           case PRE_OR_LISTING:
           case FIELDSET:
           case BUTTON:
-          case ADDRESS_OR_ARTICLE_OR_ASIDE_OR_DETAILS_OR_DIALOG_OR_DIR_OR_FIGCAPTION_OR_FIGURE_OR_FOOTER_OR_HEADER_OR_HGROUP_OR_MAIN_OR_NAV_OR_SEARCH_OR_SECTION_OR_SUMMARY:
-          case SELECT: {
+          case SELECT:
+          case ADDRESS_OR_ARTICLE_OR_ASIDE_OR_DETAILS_OR_DIALOG_OR_DIR_OR_FIGCAPTION_OR_FIGURE_OR_FOOTER_OR_HEADER_OR_HGROUP_OR_MAIN_OR_NAV_OR_SEARCH_OR_SECTION_OR_SUMMARY: {
             eltPos = findLastInScope(name);
             if (eltPos == nsHtml5TreeBuilder::NOT_FOUND_ON_STACK) {
               errStrayEndTag(name);
@@ -2701,7 +2720,7 @@ void nsHtml5TreeBuilder::endTag(nsHtml5ElementName* elementName) {
               errNoElementToCloseButEndTagSeen(nsGkAtoms::p);
               if (isInForeign()) {
                 errHtmlStartTagInForeignContext(name);
-                while (currentPtr >= 0 &&
+                while (currentPtr > 0 &&
                        stack[currentPtr]->ns != kNameSpaceID_XHTML) {
                   pop();
                 }
@@ -2786,7 +2805,7 @@ void nsHtml5TreeBuilder::endTag(nsHtml5ElementName* elementName) {
             errEndTagBr();
             if (isInForeign()) {
               errHtmlStartTagInForeignContext(name);
-              while (currentPtr >= 0 &&
+              while (currentPtr > 0 &&
                      stack[currentPtr]->ns != kNameSpaceID_XHTML) {
                 pop();
               }
