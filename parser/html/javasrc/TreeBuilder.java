@@ -3170,7 +3170,7 @@ public abstract class TreeBuilder<T> implements TokenHandler,
             }
             return Portability.newStringFromBuffer(buffer, start, end
                     - start
-                // CPPONLY: , tb, false
+                // CPPONLY: , tb, null
             );
         }
         return null;

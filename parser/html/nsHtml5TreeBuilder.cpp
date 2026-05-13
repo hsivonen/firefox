@@ -2282,7 +2282,7 @@ charsetloop_end:;
       }
     }
     return nsHtml5Portability::newStringFromBuffer(buffer, start, end - start,
-                                                   tb, false);
+                                                   tb, nullptr);
   }
   return nullptr;
 }

@@ -66,15 +66,24 @@ class nsHtml5HtmlAttributes {
   void setDuplicateAttributeError() { mDuplicateAttributeError = true; }
   bool getDuplicateAttributeError() { return mDuplicateAttributeError; }
 
+  // We know we don't add/remove attributes during iteration,
+  // so using raw pointer iterator for performance.
+  nsHtml5AttributeEntry* begin() { return mStorage.Elements(); }
+
+  nsHtml5AttributeEntry* end() {
+    return mStorage.Elements() + mStorage.Length();
+  }
+
   // Remove getIndex when removing isindex support
   int32_t getIndex(nsHtml5AttributeName* aName);
 
   nsHtml5String getValue(nsHtml5AttributeName* aName);
   int32_t getLength();
   nsAtom* getLocalNameNoBoundsCheck(int32_t aIndex);
+  RefPtr<nsAtom>& getLocalNameRefNoBoundsCheck(int32_t aIndex);
   int32_t getURINoBoundsCheck(int32_t aIndex);
   nsAtom* getPrefixNoBoundsCheck(int32_t aIndex);
-  nsHtml5String getValueNoBoundsCheck(int32_t aIndex);
+  nsHtml5String& getValueNoBoundsCheck(int32_t aIndex);
   nsHtml5AttributeName* getAttributeNameNoBoundsCheck(int32_t aIndex);
   int32_t getLineNoBoundsCheck(int32_t aIndex);
   void addAttribute(nsHtml5AttributeName* aName, nsHtml5String aValue,

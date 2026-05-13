@@ -87,6 +87,13 @@ nsAtom* nsHtml5HtmlAttributes::getLocalNameNoBoundsCheck(int32_t aIndex) {
   return mStorage.Elements()[aIndex].GetLocal(mMode);
 }
 
+RefPtr<nsAtom>& nsHtml5HtmlAttributes::getLocalNameRefNoBoundsCheck(
+    int32_t aIndex) {
+  MOZ_ASSERT(aIndex < int32_t(mStorage.Length()) && aIndex >= 0,
+             "Index out of bounds");
+  return mStorage.Elements()[aIndex].GetLocalRef(mMode);
+}
+
 int32_t nsHtml5HtmlAttributes::getURINoBoundsCheck(int32_t aIndex) {
   MOZ_ASSERT(aIndex < int32_t(mStorage.Length()) && aIndex >= 0,
              "Index out of bounds");
@@ -99,7 +106,7 @@ nsAtom* nsHtml5HtmlAttributes::getPrefixNoBoundsCheck(int32_t aIndex) {
   return mStorage.Elements()[aIndex].GetPrefix(mMode);
 }
 
-nsHtml5String nsHtml5HtmlAttributes::getValueNoBoundsCheck(int32_t aIndex) {
+nsHtml5String& nsHtml5HtmlAttributes::getValueNoBoundsCheck(int32_t aIndex) {
   MOZ_ASSERT(aIndex < int32_t(mStorage.Length()) && aIndex >= 0,
              "Index out of bounds");
   return mStorage.Elements()[aIndex].GetValue();
