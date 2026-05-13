@@ -32,6 +32,7 @@
 #include "mozilla/Result.h"
 #include "mozilla/RustCell.h"
 #include "mozilla/UniquePtr.h"
+#include "mozilla/dom/AtomAttributes.h"
 #include "mozilla/dom/BorrowedAttrInfo.h"
 #include "mozilla/dom/DOMString.h"
 #include "mozilla/dom/DOMTokenListSupportedTokens.h"
@@ -50,6 +51,7 @@
 #include "nsError.h"
 #include "nsGkAtoms.h"
 #include "nsHashKeys.h"
+#include "nsHtml5String.h"
 #include "nsLiteralString.h"
 #include "nsRect.h"
 #include "nsTHashMap.h"
@@ -922,6 +924,29 @@ class Element : public FragmentOrElement {
   // either the input or output value of aParsedValue is StoresOwnData.
   nsresult SetParsedAttr(int32_t aNameSpaceID, nsAtom* aName, nsAtom* aPrefix,
                          nsAttrValue& aParsedValue, bool aNotify);
+
+  /**
+   * This is meant to be called only by the HTML parser and, at this time,
+   * only on non-custom HTML elements.
+   *
+   * The namespace is assumed to be no namespace. There is no prefix.
+   * This element must not have been in a DOM tree. Whether `aValue`
+   * holds an nsAtom* or a StringBuffer* must already match which
+   * representations `aName` implies. This method assumes sufficient
+   * storage has been reserved. If `aValue` holds a StringBuffer*,
+   * the storage length of the buffer must match the requirements
+   * of attribute storage (i.e. logical length can be derived from
+   * storage length).
+   *
+   * `aValue` must refer to an owner `nsHtml5String`. That is, it
+   * must be permissible to logically move the ownership of
+   * the `nsAtom*` or `StringBuffer*` out of it. This method is
+   * also expected to take the ownership of `aName`.
+   */
+  nsresult SetNoNameSpaceAttrOnNewlyCreatedElement(
+      RefPtr<nsAtom>& aName, nsHtml5String& aValue,
+      bool& isPendingMappedAttributeEvaluation);
+
   /**
    * Get the current value of the attribute. This returns a form that is
    * suitable for passing back into SetAttr.
@@ -2127,9 +2152,15 @@ class Element : public FragmentOrElement {
 
   /**
    * Preallocate space in this element's attribute array for the given
-   * total number of attributes.
+   * total number of attributes. May not actually allocate this much.
    */
   void TryReserveAttributeCount(uint32_t aAttributeCount);
+
+  /**
+   * Preallocate space in this element's attribute array for the given
+   * total number of attributes. Aborts on OOM.
+   */
+  void ReserveAttributeCount(uint32_t aAttributeCount);
 
   void SetParserHadDuplicateAttributeError() {
     SetFlags(ELEMENT_PARSER_HAD_DUPLICATE_ATTR_ERROR);
@@ -2324,6 +2355,11 @@ class Element : public FragmentOrElement {
    * we're actually doing an attr set and will be called before
    * AttributeWillChange and before ParseAttribute and hence before we've set
    * the new value.
+   *
+   * NOTE: The fast from-parser code path for HTML elements does not call this,
+   * so please try to focus this method and its overrides to behaviors that
+   * are about _changing_ attributes but not about setting them for the first
+   * time on a newly-created element.
    *
    * @param aNamespaceID the namespace of the attr being set
    * @param aName the localname of the attribute being set
