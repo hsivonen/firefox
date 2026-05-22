@@ -944,7 +944,7 @@ class Element : public FragmentOrElement {
    * also expected to take the ownership of `aName`.
    */
   nsresult SetNoNameSpaceAttrOnNewlyCreatedElement(
-      RefPtr<nsAtom>& aName, nsHtml5String& aValue,
+      already_AddRefed<nsAtom> aName, nsHtml5String& aValue,
       bool& isPendingMappedAttributeEvaluation);
 
   /**
